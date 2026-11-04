@@ -23,7 +23,7 @@ param(
     [switch]$SkipServers = $true,    # Skip Servers, DCs, RDS, and Remote servers (PC / Notebooks only)
     [string]$ExcludeServerFile,      # Optional .txt file with hostnames/IPs to exclude from scan
     [string]$PingMethod = 'combined', # Reachability method: combined, icmp, tcp, udptcp, arp
-    [string]$ProbePorts = '135,445,5985', # Target ports for TCP/UDP probing
+    [string]$ProbePorts = '135,445,5985,5900', # Target ports for TCP/UDP probing
     [int]$PingTimeoutMs = 1000,      # Probe timeout in milliseconds
     [int]$PingProbes = 2,            # Number of ping probes/packets to send
     [int]$ThreadDelayMs = 20,        # Inter-host delay between starting threads in ms
@@ -255,7 +255,7 @@ function Test-PCConnection([string]$computer) {
     $method = if ($PingMethod) { $PingMethod.ToLower() } else { 'combined' }
     $timeoutMs = if ($PingTimeoutMs -ge 100) { $PingTimeoutMs } else { 1000 }
     $probes = if ($PingProbes -ge 1) { $PingProbes } else { 2 }
-    $ports = if ($script:ParsedProbePorts -and $script:ParsedProbePorts.Count -gt 0) { $script:ParsedProbePorts } else { @(135, 445, 5985) }
+    $ports = if ($script:ParsedProbePorts -and $script:ParsedProbePorts.Count -gt 0) { $script:ParsedProbePorts } else { @(135, 445, 5985, 5900) }
 
     # Helper: Fast UDP Wake-up Datagram (wakes sleeping Wi-Fi / power-saving adapters)
     $sendUdpWakeup = {

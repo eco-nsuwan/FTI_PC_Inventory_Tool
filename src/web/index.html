@@ -8,7 +8,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>FTI PC Inventory Tool - v2026.11.04.2</title>
+  <title>FTI PC Inventory Tool - v2026.11.04.3</title>
 
   <script>
 
@@ -3733,7 +3733,7 @@
 
         <span>FTI PC Inventory Tool</span>
 
-        <span class="version-tag has-tooltip" data-tooltip="Build: 2026-11-04 11:47:00" id="appVersionTag">v2026.11.04.2 Enterprise</span>
+        <span class="version-tag has-tooltip" data-tooltip="Build: 2026-11-04 16:51:27" id="appVersionTag">v2026.11.04.3 Enterprise</span>
 
       </div>
 
@@ -4079,6 +4079,7 @@
                 <button type="button" class="preset-chip active" data-port="135" onclick="togglePortChip(this)">135 (RPC)</button>
                 <button type="button" class="preset-chip active" data-port="445" onclick="togglePortChip(this)">445 (SMB)</button>
                 <button type="button" class="preset-chip active" data-port="5985" onclick="togglePortChip(this)">5985 (WinRM)</button>
+                <button type="button" class="preset-chip active" data-port="5900" onclick="togglePortChip(this)">5900 (VNC)</button>
                 <button type="button" class="preset-chip" data-port="5986" onclick="togglePortChip(this)">5986 (HTTPS)</button>
                 <button type="button" class="preset-chip" data-port="3389" onclick="togglePortChip(this)">3389 (RDP)</button>
                 <button type="button" class="preset-chip" data-port="139" onclick="togglePortChip(this)">139 (NetBIOS)</button>
@@ -5864,26 +5865,26 @@
         if (numProbes) numProbes.value = 3;
         if (numDelay) numDelay.value = 30;
         if (boxPorts) {
-          const wifiPorts = ['135', '445', '5985', '5986', '3389', '139'];
+          const wifiPorts = ['135', '445', '5985', '5900', '5986', '3389', '139'];
           boxPorts.querySelectorAll('.preset-chip').forEach(b => {
             const p = b.getAttribute('data-port');
             b.classList.toggle('active', wifiPorts.includes(p));
           });
         }
-        showToast('Wi-Fi Probing preset applied (Timeout: 1500ms, Probes: 3, Delay: 30ms, Ports: 135, 445, 5985, 5986, 3389, 139)', 'info');
+        showToast('Wi-Fi Probing preset applied (Timeout: 1500ms, Probes: 3, Delay: 30ms, Ports: 135, 445, 5985, 5900, 5986, 3389, 139)', 'info');
       } else {
         if (selMethod) selMethod.value = 'combined';
         if (numTimeout) numTimeout.value = 1000;
         if (numProbes) numProbes.value = 2;
         if (numDelay) numDelay.value = 20;
         if (boxPorts) {
-          const lanPorts = ['135', '445', '5985'];
+          const lanPorts = ['135', '445', '5985', '5900'];
           boxPorts.querySelectorAll('.preset-chip').forEach(b => {
             const p = b.getAttribute('data-port');
             b.classList.toggle('active', lanPorts.includes(p));
           });
         }
-        showToast('Standard LAN probing preset applied', 'info');
+        showToast('Standard LAN probing preset applied (Ports: 135, 445, 5985, 5900)', 'info');
       }
     };
 
@@ -7056,7 +7057,7 @@
               }
             });
           }
-          return ports.join(',') || '135,445,5985';
+          return ports.join(',') || '135,445,5985,5900';
         })(),
         pingTimeoutMs: parseInt(document.getElementById('numPingTimeout') ? document.getElementById('numPingTimeout').value : '1000', 10) || 1000,
         pingProbes: parseInt(document.getElementById('numPingProbes') ? document.getElementById('numPingProbes').value : '2', 10) || 2,
