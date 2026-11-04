@@ -13,7 +13,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& {
         Write-Host 'Staging directory not found. Initializing...' -ForegroundColor Yellow
         New-Item -ItemType Directory -Path `$staging -Force | Out-Null
         Set-Location `$staging
-        git clone https://github.com/MrAlex1199/FTI_PC_Inventory_Tool.git .
+        git clone https://github.com/eco-nsuwan/FTI_PC_Inventory_Tool.git .
     }
     
     # Sync files
@@ -40,5 +40,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& {
 }"
 
 echo.
-echo View repository at: https://github.com/MrAlex1199/FTI_PC_Inventory_Tool
+echo View repository at: https://github.com/eco-nsuwan/FTI_PC_Inventory_Tool
 pause
