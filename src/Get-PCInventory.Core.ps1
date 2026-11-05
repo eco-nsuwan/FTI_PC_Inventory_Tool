@@ -28,7 +28,8 @@ param(
     [int]$PingProbes = 2,            # Number of ping probes/packets to send
     [int]$ThreadDelayMs = 20,        # Inter-host delay between starting threads in ms
     [switch]$ScanDeadHosts,          # Bypass reachability check and attempt scan on dead hosts
-    [switch]$SkipBroadcast = $true   # Skip *.0 and *.255 unassigned/broadcast addresses
+    [switch]$SkipBroadcast = $true,  # Skip *.0 and *.255 unassigned/broadcast addresses
+    [switch]$EnableProtocolFallback = $true # Automatically fallback to WinRM, Legacy WMI, Remote Registry, and NetBIOS/AD
 )
 
 $Software = -not $NoSoftware
@@ -428,6 +429,8 @@ function Get-ADInfo([string]$pc) {
         $searcher = [adsisearcher]"(&(objectCategory=computer)(name=$pc))"
         [void]$searcher.PropertiesToLoad.Add('lastlogontimestamp')
         [void]$searcher.PropertiesToLoad.Add('distinguishedname')
+        [void]$searcher.PropertiesToLoad.Add('operatingsystem')
+        [void]$searcher.PropertiesToLoad.Add('operatingsystemversion')
         $one = $searcher.FindOne()
         if ($one) {
             $lastLogonStr = '-'
@@ -451,7 +454,9 @@ function Get-ADInfo([string]$pc) {
                     }
                 } catch {}
             }
-            $info = @{ AD_LastLogon = $lastLogonStr; AD_OU = $ouStr }
+            $adOS = if ($one.Properties.Contains('operatingsystem')) { [string]$one.Properties['operatingsystem'][0] } else { '-' }
+            $adOSVer = if ($one.Properties.Contains('operatingsystemversion')) { [string]$one.Properties['operatingsystemversion'][0] } else { '-' }
+            $info = @{ AD_LastLogon = $lastLogonStr; AD_OU = $ouStr; AD_OS = $adOS; AD_OSBuild = $adOSVer }
             $adCache[$pc.ToUpper()] = $info
             return $info
         }
@@ -942,7 +947,335 @@ if (-not $SkipHardware) {
             $itemOk
         }
         catch {
-            if ($s) { Remove-CimSession $s -ErrorAction SilentlyContinue }
+            $primaryExMsg = $_.Exception.Message
+            if ($s) { Remove-CimSession $s -ErrorAction SilentlyContinue; $s = $null }
+
+            $recoveredItem = $null
+
+            if ($EnableProtocolFallback -and -not $isLocal) {
+                # ---------------------------------------------------------------
+                # Level 1: Fallback to WinRM / WsMan (Ports 5985/5986)
+                # ---------------------------------------------------------------
+                $wsSess = $null
+                try {
+                    $wsOpt = New-CimSessionOption -Protocol WsMan
+                    $wsSess = New-CimSession -ComputerName $pc -SessionOption $wsOpt -OperationTimeoutSec 10 -ErrorAction Stop
+                    $cs = Get-CimInstance Win32_ComputerSystem -CimSession $wsSess -OperationTimeoutSec 10 -ErrorAction Stop
+                    $bios = Get-CimInstance Win32_BIOS -CimSession $wsSess -OperationTimeoutSec 10 -ErrorAction SilentlyContinue
+                    $os = Get-CimInstance Win32_OperatingSystem -CimSession $wsSess -OperationTimeoutSec 10 -ErrorAction SilentlyContinue
+                    $cpu = Get-CimInstance Win32_Processor -CimSession $wsSess -OperationTimeoutSec 10 -ErrorAction SilentlyContinue | Select-Object -First 1
+                    $disk = Get-CimInstance Win32_DiskDrive -CimSession $wsSess -OperationTimeoutSec 10 -ErrorAction SilentlyContinue
+                    $gpu = Get-CimInstance Win32_VideoController -CimSession $wsSess -OperationTimeoutSec 10 -ErrorAction SilentlyContinue
+                    $ram = Get-CimInstance Win32_PhysicalMemory -CimSession $wsSess -OperationTimeoutSec 10 -ErrorAction SilentlyContinue
+                    $net = Get-CimInstance Win32_NetworkAdapterConfiguration -CimSession $wsSess -OperationTimeoutSec 10 -ErrorAction SilentlyContinue | Where-Object IPEnabled
+                    $cDrive = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'" -CimSession $wsSess -OperationTimeoutSec 10 -ErrorAction SilentlyContinue
+
+                    $ad = Get-ADInfo (if ($cs -and $cs.Name) { $cs.Name } else { $pc })
+                    $ramGB = if ($ram) { [math]::Round(($ram | Measure-Object Capacity -Sum).Sum / 1GB) } else { '-' }
+                    $cDiskSummary = '-'
+                    if ($cDrive -and $cDrive.Size -gt 0) {
+                        $freeGB = [math]::Round($cDrive.FreeSpace / 1GB, 1)
+                        $totalGB = [math]::Round($cDrive.Size / 1GB, 1)
+                        $pct = [math]::Round(($cDrive.FreeSpace / $cDrive.Size) * 100)
+                        $cDiskSummary = "${freeGB}GB free of ${totalGB}GB (${pct}%)"
+                    }
+
+                    $recoveredItem = New-HardwareRecord @{
+                        PCName         = if ($cs -and $cs.Name) { $cs.Name } else { $pc }
+                        Status         = 'OK'
+                        Method         = 'WinRM:5985'
+                        Status_Detail  = 'Recovered via WinRM/WsMan (DCOM blocked)'
+                        Fail_Count     = 0
+                        Win_License    = $prevWinLicense
+                        Office_License = $prevOfficeLicense
+                        Office_Detail  = $prevOfficeDetail
+                        User           = if ($cs -and $cs.UserName) { $cs.UserName } else { '-' }
+                        Maker          = if ($cs -and $cs.Manufacturer) { $cs.Manufacturer } else { '-' }
+                        Model          = if ($cs -and $cs.Model) { $cs.Model } else { '-' }
+                        Serial         = if ($bios -and $bios.SerialNumber) { $bios.SerialNumber } else { '-' }
+                        CPU            = if ($cpu -and $cpu.Name) { $cpu.Name } else { '-' }
+                        Cores          = if ($cpu -and $cpu.NumberOfCores) { $cpu.NumberOfCores } else { '-' }
+                        RAM_GB         = $ramGB
+                        Disk_C_Free    = $cDiskSummary
+                        Disks          = if ($disk) { ($disk | ForEach-Object { "$($_.Model) $([math]::Round($_.Size/1GB))GB" }) -join '; ' } else { '-' }
+                        GPU            = if ($gpu) { ($gpu.Name) -join '; ' } else { '-' }
+                        OS             = if ($os -and $os.Caption) { $os.Caption } else { '-' }
+                        OSBuild        = if ($os -and $os.BuildNumber) { $os.BuildNumber } else { '-' }
+                        Last_Boot      = '-'
+                        Uptime         = '-'
+                        AD_LastLogon   = $ad.AD_LastLogon
+                        AD_OU          = $ad.AD_OU
+                        IP             = if ($net -and $net.IPAddress) { ($net.IPAddress | Where-Object { $_ -match '^\d+\.' }) -join ', ' } else { $pc }
+                        MAC            = if ($net -and $net.MACAddress) { ($net.MACAddress) -join ', ' } else { '-' }
+                        Scan_Count     = 1
+                        First_Seen     = Get-Date -Format 'yyyy-MM-dd HH:mm'
+                        Last_Scan      = Get-Date -Format 'yyyy-MM-dd HH:mm'
+                    }
+                } catch {
+                    # WinRM failed, continue to next fallback
+                } finally {
+                    if ($wsSess) { Remove-CimSession $wsSess -ErrorAction SilentlyContinue }
+                }
+
+                # ---------------------------------------------------------------
+                # Level 2: Fallback to Legacy WMI COM (Get-WmiObject)
+                # ---------------------------------------------------------------
+                if (-not $recoveredItem) {
+                    try {
+                        $wmiCs = Get-WmiObject Win32_ComputerSystem -ComputerName $pc -EnableAllPrivileges -ErrorAction Stop
+                        $wmiBios = Get-WmiObject Win32_BIOS -ComputerName $pc -ErrorAction SilentlyContinue
+                        $wmiOs = Get-WmiObject Win32_OperatingSystem -ComputerName $pc -ErrorAction SilentlyContinue
+                        $wmiCpu = Get-WmiObject Win32_Processor -ComputerName $pc -ErrorAction SilentlyContinue | Select-Object -First 1
+                        $wmiDisk = Get-WmiObject Win32_DiskDrive -ComputerName $pc -ErrorAction SilentlyContinue
+                        $wmiGpu = Get-WmiObject Win32_VideoController -ComputerName $pc -ErrorAction SilentlyContinue
+                        $wmiRam = Get-WmiObject Win32_PhysicalMemory -ComputerName $pc -ErrorAction SilentlyContinue
+                        $wmiNet = Get-WmiObject Win32_NetworkAdapterConfiguration -ComputerName $pc -ErrorAction SilentlyContinue | Where-Object { $_.IPEnabled }
+                        $wmiC = Get-WmiObject Win32_LogicalDisk -Filter "DeviceID='C:'" -ComputerName $pc -ErrorAction SilentlyContinue
+
+                        $ad = Get-ADInfo (if ($wmiCs -and $wmiCs.Name) { $wmiCs.Name } else { $pc })
+                        $ramGB = if ($wmiRam) { [math]::Round(($wmiRam | Measure-Object Capacity -Sum).Sum / 1GB) } else { '-' }
+                        $cDiskSummary = '-'
+                        if ($wmiC -and $wmiC.Size -gt 0) {
+                            $freeGB = [math]::Round($wmiC.FreeSpace / 1GB, 1)
+                            $totalGB = [math]::Round($wmiC.Size / 1GB, 1)
+                            $pct = [math]::Round(($wmiC.FreeSpace / $wmiC.Size) * 100)
+                            $cDiskSummary = "${freeGB}GB free of ${totalGB}GB (${pct}%)"
+                        }
+
+                        $recoveredItem = New-HardwareRecord @{
+                            PCName         = if ($wmiCs -and $wmiCs.Name) { $wmiCs.Name } else { $pc }
+                            Status         = 'OK'
+                            Method         = 'Legacy-WMI'
+                            Status_Detail  = 'Recovered via Legacy WMI COM (CIM provider failed)'
+                            Fail_Count     = 0
+                            Win_License    = $prevWinLicense
+                            Office_License = $prevOfficeLicense
+                            Office_Detail  = $prevOfficeDetail
+                            User           = if ($wmiCs -and $wmiCs.UserName) { $wmiCs.UserName } else { '-' }
+                            Maker          = if ($wmiCs -and $wmiCs.Manufacturer) { $wmiCs.Manufacturer } else { '-' }
+                            Model          = if ($wmiCs -and $wmiCs.Model) { $wmiCs.Model } else { '-' }
+                            Serial         = if ($wmiBios -and $wmiBios.SerialNumber) { $wmiBios.SerialNumber } else { '-' }
+                            CPU            = if ($wmiCpu -and $wmiCpu.Name) { $wmiCpu.Name } else { '-' }
+                            Cores          = if ($wmiCpu -and $wmiCpu.NumberOfCores) { $wmiCpu.NumberOfCores } else { '-' }
+                            RAM_GB         = $ramGB
+                            Disk_C_Free    = $cDiskSummary
+                            Disks          = if ($wmiDisk) { ($wmiDisk | ForEach-Object { "$($_.Model) $([math]::Round($_.Size/1GB))GB" }) -join '; ' } else { '-' }
+                            GPU            = if ($wmiGpu) { ($wmiGpu.Name) -join '; ' } else { '-' }
+                            OS             = if ($wmiOs -and $wmiOs.Caption) { $wmiOs.Caption } else { '-' }
+                            OSBuild        = if ($wmiOs -and $wmiOs.BuildNumber) { $wmiOs.BuildNumber } else { '-' }
+                            Last_Boot      = '-'
+                            Uptime         = '-'
+                            AD_LastLogon   = $ad.AD_LastLogon
+                            AD_OU          = $ad.AD_OU
+                            IP             = if ($wmiNet -and $wmiNet.IPAddress) { ($wmiNet.IPAddress | Where-Object { $_ -match '^\d+\.' }) -join ', ' } else { $pc }
+                            MAC            = if ($wmiNet -and $wmiNet.MACAddress) { ($wmiNet.MACAddress) -join ', ' } else { '-' }
+                            Scan_Count     = 1
+                            First_Seen     = Get-Date -Format 'yyyy-MM-dd HH:mm'
+                            Last_Scan      = Get-Date -Format 'yyyy-MM-dd HH:mm'
+                        }
+                    } catch {
+                        # Legacy WMI failed, continue to next fallback
+                    }
+                }
+
+                # ---------------------------------------------------------------
+                # Level 3: Fallback to Remote Registry (Port 445 SMB)
+                # ---------------------------------------------------------------
+                if (-not $recoveredItem) {
+                    try {
+                        $remoteBase = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $pc)
+                        if ($remoteBase) {
+                            $prodName = ''
+                            $dispVer = ''
+                            $buildNum = ''
+                            $regHost = ''
+                            $regCpu = '-'
+                            $regCores = '-'
+                            $regMaker = '-'
+                            $regModel = '-'
+                            $regSerial = '-'
+                            $regUser = '-'
+
+                            try {
+                                $osKey = $remoteBase.OpenSubKey('SOFTWARE\Microsoft\Windows NT\CurrentVersion')
+                                if ($osKey) {
+                                    $prodName = [string]$osKey.GetValue('ProductName')
+                                    $dispVer = [string]$osKey.GetValue('DisplayVersion')
+                                    $buildNum = [string]$osKey.GetValue('CurrentBuildNumber')
+                                    $osKey.Close()
+                                }
+                            } catch {}
+
+                            try {
+                                $compKey = $remoteBase.OpenSubKey('SYSTEM\CurrentControlSet\Control\ComputerName\ActiveComputerName')
+                                if ($compKey) {
+                                    $regHost = [string]$compKey.GetValue('ComputerName')
+                                    $compKey.Close()
+                                }
+                            } catch {}
+
+                            try {
+                                $cpuKey = $remoteBase.OpenSubKey('HARDWARE\DESCRIPTION\System\CentralProcessor\0')
+                                if ($cpuKey) {
+                                    $regCpu = [string]$cpuKey.GetValue('ProcessorNameString')
+                                    $cpuKey.Close()
+                                }
+                                $parentCpuKey = $remoteBase.OpenSubKey('HARDWARE\DESCRIPTION\System\CentralProcessor')
+                                if ($parentCpuKey) {
+                                    $regCores = $parentCpuKey.SubKeyCount
+                                    $parentCpuKey.Close()
+                                }
+                            } catch {}
+
+                            try {
+                                $biosKey = $remoteBase.OpenSubKey('HARDWARE\DESCRIPTION\System\BIOS')
+                                if ($biosKey) {
+                                    $regMaker = [string]$biosKey.GetValue('SystemManufacturer')
+                                    $regModel = [string]$biosKey.GetValue('SystemProductName')
+                                    $regSerial = [string]$biosKey.GetValue('SystemSerialNumber')
+                                    $biosKey.Close()
+                                }
+                            } catch {}
+
+                            try {
+                                $logonKey = $remoteBase.OpenSubKey('SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI')
+                                if ($logonKey) {
+                                    $regUser = [string]$logonKey.GetValue('LastLoggedOnUser')
+                                    if (-not $regUser) { $regUser = [string]$logonKey.GetValue('LastLoggedOnSAMUser') }
+                                    $logonKey.Close()
+                                }
+                            } catch {}
+
+                            $remoteBase.Close()
+
+                            if ($regHost -or $prodName -or ($regCpu -ne '-')) {
+                                $ad = Get-ADInfo (if ($regHost) { $regHost } else { $pc })
+                                $macArp = '-'
+                                try {
+                                    $arpRaw = & arp.exe -a 2>$null
+                                    if ($arpRaw -match [regex]::Escape($pc) + '\s+([0-9a-fA-F-]+)\s+dynamic') {
+                                        $macArp = $Matches[1]
+                                    }
+                                } catch {}
+
+                                $captionOS = if ($prodName) { "$prodName $dispVer".Trim() } else { '-' }
+
+                                $recoveredItem = New-HardwareRecord @{
+                                    PCName         = if ($regHost) { $regHost } else { $pc }
+                                    Status         = 'OK'
+                                    Method         = 'Reg:445'
+                                    Status_Detail  = 'Recovered via Remote Registry 445 (WMI/DCOM unavailable)'
+                                    Fail_Count     = 0
+                                    Win_License    = $prevWinLicense
+                                    Office_License = $prevOfficeLicense
+                                    Office_Detail  = $prevOfficeDetail
+                                    User           = if ($regUser) { $regUser } else { '-' }
+                                    Maker          = if ($regMaker) { $regMaker } else { '-' }
+                                    Model          = if ($regModel) { $regModel } else { '-' }
+                                    Serial         = if ($regSerial) { $regSerial } else { '-' }
+                                    CPU            = $regCpu
+                                    Cores          = $regCores
+                                    RAM_GB         = if ($oldRecord -and $oldRecord.RAM_GB -and $oldRecord.RAM_GB -ne '-') { $oldRecord.RAM_GB } else { '-' }
+                                    Disk_C_Free    = if ($oldRecord -and $oldRecord.Disk_C_Free) { $oldRecord.Disk_C_Free } else { '-' }
+                                    Disks          = if ($oldRecord -and $oldRecord.Disks) { $oldRecord.Disks } else { '-' }
+                                    GPU            = if ($oldRecord -and $oldRecord.GPU) { $oldRecord.GPU } else { '-' }
+                                    OS             = $captionOS
+                                    OSBuild        = $buildNum
+                                    Last_Boot      = '-'
+                                    Uptime         = '-'
+                                    AD_LastLogon   = $ad.AD_LastLogon
+                                    AD_OU          = $ad.AD_OU
+                                    IP             = $pc
+                                    MAC            = $macArp
+                                    Scan_Count     = 1
+                                    First_Seen     = Get-Date -Format 'yyyy-MM-dd HH:mm'
+                                    Last_Scan      = Get-Date -Format 'yyyy-MM-dd HH:mm'
+                                }
+                            }
+                        }
+                    } catch {
+                        # Remote Registry failed, continue to next fallback
+                    }
+                }
+
+                # ---------------------------------------------------------------
+                # Level 4: Fallback to Network & Directory Metadata (NetBIOS/DNS/AD)
+                # ---------------------------------------------------------------
+                if (-not $recoveredItem) {
+                    try {
+                        $resolvedHost = $pc
+                        try {
+                            $dnsHost = [System.Net.Dns]::GetHostEntry($pc).HostName
+                            if ($dnsHost) { $resolvedHost = ($dnsHost -split '\.')[0] }
+                        } catch {
+                            try {
+                                $nbt = & nbtstat.exe -A $pc 2>$null
+                                if ($nbt -match '(?i)^\s+([a-zA-Z0-9_\-]+)\s+<00>\s+UNIQUE') {
+                                    $resolvedHost = $Matches[1].Trim()
+                                }
+                            } catch {}
+                        }
+
+                        $ad = Get-ADInfo $resolvedHost
+                        $macArp = '-'
+                        try {
+                            $arpRaw = & arp.exe -a 2>$null
+                            if ($arpRaw -match [regex]::Escape($pc) + '\s+([0-9a-fA-F-]+)\s+dynamic') {
+                                $macArp = $Matches[1]
+                            }
+                        } catch {}
+
+                        $hasMeta = ($resolvedHost -ne $pc) -or ($ad.AD_OU -and $ad.AD_OU -ne '-') -or ($ad.AD_LastLogon -and $ad.AD_LastLogon -ne '-') -or ($macArp -ne '-')
+                        if ($hasMeta) {
+                            $adOs = if ($ad.ContainsKey('AD_OS') -and $ad.AD_OS -and $ad.AD_OS -ne '-') { $ad.AD_OS } else { (if ($oldRecord -and $oldRecord.OS) { $oldRecord.OS } else { '-' }) }
+                            $adOsBuild = if ($ad.ContainsKey('AD_OSBuild') -and $ad.AD_OSBuild -and $ad.AD_OSBuild -ne '-') { $ad.AD_OSBuild } else { (if ($oldRecord -and $oldRecord.OSBuild) { $oldRecord.OSBuild } else { '-' }) }
+
+                            $probeMethod = if ($script:lastConnInfo -and $script:lastConnInfo.Method) { $script:lastConnInfo.Method } else { 'TCP' }
+
+                            $recoveredItem = New-HardwareRecord @{
+                                PCName         = if ($resolvedHost -ne $pc) { $resolvedHost } else { (if ($oldRecord -and $oldRecord.PCName) { $oldRecord.PCName } else { $pc }) }
+                                Status         = 'Partial'
+                                Method         = "$probeMethod+AD"
+                                Status_Detail  = "Partial recovery: Management RPC/SMB ports denied; metadata retrieved via NetBIOS/DNS/AD ($primaryExMsg)"
+                                Fail_Count     = 0
+                                Win_License    = $prevWinLicense
+                                Office_License = $prevOfficeLicense
+                                Office_Detail  = $prevOfficeDetail
+                                User           = if ($oldRecord -and $oldRecord.User) { $oldRecord.User } else { '-' }
+                                Maker          = if ($oldRecord -and $oldRecord.Maker) { $oldRecord.Maker } else { '-' }
+                                Model          = if ($oldRecord -and $oldRecord.Model) { $oldRecord.Model } else { '-' }
+                                Serial         = if ($oldRecord -and $oldRecord.Serial) { $oldRecord.Serial } else { '-' }
+                                CPU            = if ($oldRecord -and $oldRecord.CPU) { $oldRecord.CPU } else { '-' }
+                                Cores          = if ($oldRecord -and $oldRecord.Cores) { $oldRecord.Cores } else { '-' }
+                                RAM_GB         = if ($oldRecord -and $oldRecord.RAM_GB) { $oldRecord.RAM_GB } else { '-' }
+                                Disk_C_Free    = if ($oldRecord -and $oldRecord.Disk_C_Free) { $oldRecord.Disk_C_Free } else { '-' }
+                                Disks          = if ($oldRecord -and $oldRecord.Disks) { $oldRecord.Disks } else { '-' }
+                                GPU            = if ($oldRecord -and $oldRecord.GPU) { $oldRecord.GPU } else { '-' }
+                                OS             = $adOs
+                                OSBuild        = $adOsBuild
+                                Last_Boot      = '-'
+                                Uptime         = '-'
+                                AD_LastLogon   = $ad.AD_LastLogon
+                                AD_OU          = $ad.AD_OU
+                                IP             = $pc
+                                MAC            = $macArp
+                                Scan_Count     = 1
+                                First_Seen     = Get-Date -Format 'yyyy-MM-dd HH:mm'
+                                Last_Scan      = Get-Date -Format 'yyyy-MM-dd HH:mm'
+                            }
+                        }
+                    } catch {
+                        # Metadata enrichment failed
+                    }
+                }
+            }
+
+            if ($recoveredItem) {
+                Write-Host ('[LIVE_PC] ' + ($recoveredItem | ConvertTo-Json -Compress))
+                $recoveredItem
+                continue
+            }
+
             $ad = Get-ADInfo $pc
             $newFail = $prevFailCount + 1
             $hDataErr = @{

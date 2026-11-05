@@ -8,7 +8,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>FTI PC Inventory Tool - v2026.11.04.3</title>
+  <title>FTI PC Inventory Tool - v2026.11.05.1</title>
 
   <script>
 
@@ -2017,6 +2017,8 @@
 
     .status-badge.ok { background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
 
+    .status-badge.partial { background: rgba(245, 158, 11, 0.18); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.4); }
+
     .status-badge.offline { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
 
     .status-badge.scanning { background: rgba(2, 132, 199, 0.15); color: var(--accent-primary); border: 1px solid rgba(2, 132, 199, 0.3); animation: pulse-ring 1.3s infinite; }
@@ -3733,7 +3735,7 @@
 
         <span>FTI PC Inventory Tool</span>
 
-        <span class="version-tag has-tooltip" data-tooltip="Build: 2026-11-04 16:51:27" id="appVersionTag">v2026.11.04.3 Enterprise</span>
+        <span class="version-tag has-tooltip" data-tooltip="Build: 2026-11-05 15:10:37" id="appVersionTag">v2026.11.05.1 Enterprise</span>
 
       </div>
 
@@ -4108,6 +4110,10 @@
 
             <!-- Checkbox Overrides -->
             <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 4px;">
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; cursor: pointer;">
+                <input type="checkbox" id="chkProtocolFallback" checked style="accent-color: var(--accent-primary);">
+                <span title="If primary DCOM WMI fails, automatically fallback to WinRM (5985), Legacy WMI, Remote Registry (445), and NetBIOS/AD">Auto Multi-Protocol Fallback (WinRM / Registry / AD)</span>
+              </label>
               <label style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; cursor: pointer;">
                 <input type="checkbox" id="chkScanDeadHosts" style="accent-color: var(--accent-primary);">
                 <span>Scan dead hosts (bypass ping check)</span>
@@ -6313,6 +6319,7 @@
       const filtered = allScannedPCs.filter(pc => {
         const matchesFilter = (currentFilter === 'all') ||
           (currentFilter === 'OK' && pc.Status === 'OK') ||
+          (currentFilter === 'Partial' && pc.Status && pc.Status.includes('Partial')) ||
           (currentFilter === 'Offline' && pc.Status && pc.Status.includes('Offline')) ||
           (currentFilter === 'Error' && pc.Status && pc.Status.includes('Error'));
         const matchesSearch = !q ||
@@ -6383,6 +6390,11 @@
             hasTooltip = true;
             tooltipText = pc.Status_Detail;
           }
+        } else if (pc.Status === 'Partial' || (pc.Status && pc.Status.includes('Partial'))) {
+          badgeClass = 'partial';
+          statusDisplay = 'Partial ⓘ';
+          hasTooltip = true;
+          tooltipText = pc.Status_Detail || 'Partial recovery: Management ports blocked; metadata from NetBIOS/DNS/AD';
         } else if (pc.Status === 'Scanning') {
           badgeClass = 'scanning';
           statusDisplay = 'Scanning';
@@ -7062,6 +7074,7 @@
         pingTimeoutMs: parseInt(document.getElementById('numPingTimeout') ? document.getElementById('numPingTimeout').value : '1000', 10) || 1000,
         pingProbes: parseInt(document.getElementById('numPingProbes') ? document.getElementById('numPingProbes').value : '2', 10) || 2,
         threadDelayMs: parseInt(document.getElementById('numThreadDelay') ? document.getElementById('numThreadDelay').value : '20', 10) || 20,
+        enableProtocolFallback: document.getElementById('chkProtocolFallback') ? document.getElementById('chkProtocolFallback').checked : true,
         scanDeadHosts: document.getElementById('chkScanDeadHosts') ? document.getElementById('chkScanDeadHosts').checked : false,
         skipBroadcast: document.getElementById('chkSkipBroadcast') ? document.getElementById('chkSkipBroadcast').checked : true
       };
