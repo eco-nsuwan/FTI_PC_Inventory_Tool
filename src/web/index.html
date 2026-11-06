@@ -8,7 +8,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>FTI PC Inventory Tool - v2026.11.05.1</title>
+  <title>FTI PC Inventory Tool - v2026.11.06.3</title>
 
   <script>
 
@@ -2017,11 +2017,11 @@
 
     .status-badge.ok { background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
 
-    .status-badge.partial { background: rgba(245, 158, 11, 0.18); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.4); }
-
     .status-badge.offline { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
 
     .status-badge.scanning { background: rgba(2, 132, 199, 0.15); color: var(--accent-primary); border: 1px solid rgba(2, 132, 199, 0.3); animation: pulse-ring 1.3s infinite; }
+
+    .status-badge.deep-scan { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.45); animation: pulse-ring 1.3s infinite; }
 
     .status-badge.error { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); border: 1px solid rgba(244, 63, 94, 0.3); }
 
@@ -3088,6 +3088,12 @@
       background: rgba(245, 158, 11, 0.08);
       color: #fbbf24;
     }
+    .method-badge.method-deep {
+      border-color: rgba(168, 85, 247, 0.45);
+      background: rgba(168, 85, 247, 0.15);
+      color: #c084fc;
+      font-weight: 700;
+    }
     .method-badge.method-offline {
       opacity: 0.6;
       border-color: transparent;
@@ -3735,7 +3741,7 @@
 
         <span>FTI PC Inventory Tool</span>
 
-        <span class="version-tag has-tooltip" data-tooltip="Build: 2026-11-05 15:10:37" id="appVersionTag">v2026.11.05.1 Enterprise</span>
+        <span class="version-tag has-tooltip" data-tooltip="Build: 2026-11-06 09:34:05" id="appVersionTag">v2026.11.06.3 Enterprise</span>
 
       </div>
 
@@ -3958,110 +3964,64 @@
         </div>
 
         <!-- Section 3: Performance & Scope -->
-
         <div class="accordion-section">
-
           <div class="accordion-header" onclick="toggleAccordion(this)">
-
             <span>3. Scan Scope & Performance</span>
-
             <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-
           </div>
-
           <div class="accordion-content">
-
             <div class="toggle-compact-row">
-
               <span class="toggle-text">Scan Hardware (CPU, RAM, Disks)</span>
-
               <label class="switch-compact">
-
                 <input type="checkbox" id="chkHw" checked>
-
                 <span class="switch-slider"></span>
-
               </label>
-
             </div>
 
             <div class="toggle-compact-row">
-
               <span class="toggle-text">Scan Installed Software</span>
-
               <label class="switch-compact">
-
                 <input type="checkbox" id="chkSw" checked>
-
                 <span class="switch-slider"></span>
-
               </label>
-
             </div>
 
             <div id="swSubBox" style="display: flex; flex-direction: column; gap: 6px; padding: 6px 8px; background: var(--bg-surface-elevated); border-radius: 6px;">
-
               <div>
-
                 <span class="field-label">Filter Software Name (* wildcards):</span>
-
                 <input type="text" id="txtNameFilter" value="*" class="input-compact">
-
               </div>
-
               <label style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; cursor: pointer;">
-
                 <input type="checkbox" id="chkUser" style="accent-color: var(--accent-primary);">
-
                 <span>Include user-specific installations</span>
-
               </label>
-
               <label style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; cursor: pointer;">
-
                 <input type="checkbox" id="chkHidden" style="accent-color: var(--accent-primary);">
-
                 <span>Include System components & Windows Updates</span>
-
               </label>
-
             </div>
 
             <div>
-
               <span class="field-label">Performance Presets:</span>
-
               <div style="display: flex; gap: 4px;" id="boxPerfPresets">
-
                 <button type="button" class="preset-chip" id="btnPerfSafe" onclick="setPerfPreset(10, 30, 'Safe')">🛡️ Safe</button>
-
                 <button type="button" class="preset-chip active" id="btnPerfBalanced" onclick="setPerfPreset(20, 30, 'Balanced')">⚖️ Balanced</button>
-
                 <button type="button" class="preset-chip" id="btnPerfHigh" onclick="setPerfPreset(40, 15, 'High Speed')">🚀 High Speed</button>
-
               </div>
-
               <input type="hidden" id="numThrottle" value="20">
-
             </div>
-
           </div>
-
         </div>
 
         <!-- Section 4: Network Reachability & Wi-Fi Probing -->
-        <div class="accordion-section">
+        <div class="accordion-section active">
           <div class="accordion-header" onclick="toggleAccordion(this)">
-            <span>4. Network & Wi-Fi Probing</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0; padding-right: 6px;">
+              <span>4. Network & Wi-Fi Probing</span>
+            </div>
             <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="accordion-content">
-            <!-- 1-Click Wi-Fi vs Standard LAN Presets -->
-            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-              <button type="button" class="preset-chip active" id="btnNetPresetLan" onclick="setNetPreset('lan')" style="flex: 1; padding: 4px 6px;">⚡ Standard LAN</button>
-              <button type="button" class="preset-chip" id="btnNetPresetWifi" onclick="setNetPreset('wifi')" style="flex: 1; padding: 4px 6px;">📶 Wi-Fi Mode</button>
-            </div>
-
             <!-- Pinging Method Selector -->
             <div>
               <span class="field-label">Pinging Method:</span>
@@ -4081,12 +4041,12 @@
                 <button type="button" class="preset-chip active" data-port="135" onclick="togglePortChip(this)">135 (RPC)</button>
                 <button type="button" class="preset-chip active" data-port="445" onclick="togglePortChip(this)">445 (SMB)</button>
                 <button type="button" class="preset-chip active" data-port="5985" onclick="togglePortChip(this)">5985 (WinRM)</button>
+                <button type="button" class="preset-chip active" data-port="5986" onclick="togglePortChip(this)">5986 (HTTPS)</button>
+                <button type="button" class="preset-chip active" data-port="3389" onclick="togglePortChip(this)">3389 (RDP)</button>
+                <button type="button" class="preset-chip active" data-port="139" onclick="togglePortChip(this)">139 (NetBIOS)</button>
+                <button type="button" class="preset-chip active" data-port="80" onclick="togglePortChip(this)">80 (HTTP)</button>
+                <button type="button" class="preset-chip active" data-port="443" onclick="togglePortChip(this)">443 (HTTPS)</button>
                 <button type="button" class="preset-chip active" data-port="5900" onclick="togglePortChip(this)">5900 (VNC)</button>
-                <button type="button" class="preset-chip" data-port="5986" onclick="togglePortChip(this)">5986 (HTTPS)</button>
-                <button type="button" class="preset-chip" data-port="3389" onclick="togglePortChip(this)">3389 (RDP)</button>
-                <button type="button" class="preset-chip" data-port="139" onclick="togglePortChip(this)">139 (NetBIOS)</button>
-                <button type="button" class="preset-chip" data-port="80" onclick="togglePortChip(this)">80 (HTTP)</button>
-                <button type="button" class="preset-chip" data-port="443" onclick="togglePortChip(this)">443 (HTTPS)</button>
               </div>
               <input type="text" id="txtCustomPorts" placeholder="Extra custom ports, e.g. 8080, 9100" class="input-compact" style="width: 100%; font-size: 0.72rem;">
             </div>
@@ -4111,16 +4071,16 @@
             <!-- Checkbox Overrides -->
             <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 4px;">
               <label style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; cursor: pointer;">
-                <input type="checkbox" id="chkProtocolFallback" checked style="accent-color: var(--accent-primary);">
-                <span title="If primary DCOM WMI fails, automatically fallback to WinRM (5985), Legacy WMI, Remote Registry (445), and NetBIOS/AD">Auto Multi-Protocol Fallback (WinRM / Registry / AD)</span>
-              </label>
-              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; cursor: pointer;">
                 <input type="checkbox" id="chkScanDeadHosts" style="accent-color: var(--accent-primary);">
                 <span>Scan dead hosts (bypass ping check)</span>
               </label>
               <label style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; cursor: pointer;">
                 <input type="checkbox" id="chkSkipBroadcast" checked style="accent-color: var(--accent-primary);">
                 <span>Skip unassigned IPs (*.0 and *.255)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; cursor: pointer;" title="Trigger ipconfig /registerdns remotely when true IP is discovered for a ghost DNS entry">
+                <input type="checkbox" id="chkAutoHealDns" checked style="accent-color: var(--accent-primary);">
+                <span>Auto-heal stale DNS via /registerdns</span>
               </label>
             </div>
           </div>
@@ -4136,7 +4096,7 @@
 
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
 
-          Retry Offline Hosts (<span id="badgeOfflineCount">0</span>)
+          ⚡ Deep Retry Offline/Stubborn Hosts (<span id="badgeOfflineCount">0</span>)
 
         </button>
 
@@ -4453,8 +4413,9 @@
                     <span class="dash-card-title">Processor (CPU) Breakdown</span>
                   </div>
                   <div class="dash-seg-toggle">
-                    <button type="button" id="btnCpuModeTier" class="dash-seg-btn active" onclick="setCpuViewMode('tier')">By Tier / Family</button>
-                    <button type="button" id="btnCpuModeGen" class="dash-seg-btn" onclick="setCpuViewMode('gen')">By Generation</button>
+                    <button type="button" id="btnCpuModeTier" class="dash-seg-btn active" onclick="setCpuViewMode('tier')">Tier</button>
+                    <button type="button" id="btnCpuModeGen" class="dash-seg-btn" onclick="setCpuViewMode('gen')">Generation</button>
+                    <button type="button" id="btnCpuModeModel" class="dash-seg-btn" onclick="setCpuViewMode('model')">Exact Model</button>
                   </div>
                 </div>
                 <div class="dash-card-body" id="dashCpuBarsContainer"></div>
@@ -4479,6 +4440,10 @@
                   <div class="dash-card-title-wrap">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                     <span class="dash-card-title">Operating System &amp; Win 11 Readiness</span>
+                  </div>
+                  <div class="dash-seg-toggle">
+                    <button type="button" id="btnOsModeVer" class="dash-seg-btn active" onclick="setOsViewMode('ver')">By Version</button>
+                    <button type="button" id="btnOsModeBuild" class="dash-seg-btn" onclick="setOsViewMode('build')">By Build Number</button>
                   </div>
                   <span class="dash-card-badge" id="lblDashWin11Pct">0% Win 11</span>
                 </div>
@@ -5083,7 +5048,8 @@
     }
 
     // Analytics Dashboard State
-    let cpuViewMode = 'tier'; // 'tier' | 'gen'
+    let cpuViewMode = 'tier'; // 'tier' | 'gen' | 'model'
+    let osViewMode = 'ver';   // 'ver' | 'build'
     let netViewMode = 'ou';   // 'ou' | 'subnet'
     let activeDrilldownCategory = null;
 
@@ -5174,8 +5140,19 @@
       cpuViewMode = mode;
       const bTier = document.getElementById('btnCpuModeTier');
       const bGen = document.getElementById('btnCpuModeGen');
+      const bModel = document.getElementById('btnCpuModeModel');
       if (bTier) bTier.classList.toggle('active', mode === 'tier');
       if (bGen) bGen.classList.toggle('active', mode === 'gen');
+      if (bModel) bModel.classList.toggle('active', mode === 'model');
+      renderDashboard();
+    }
+
+    function setOsViewMode(mode) {
+      osViewMode = mode;
+      const bVer = document.getElementById('btnOsModeVer');
+      const bBuild = document.getElementById('btnOsModeBuild');
+      if (bVer) bVer.classList.toggle('active', mode === 'ver');
+      if (bBuild) bBuild.classList.toggle('active', mode === 'build');
       renderDashboard();
     }
 
@@ -5243,24 +5220,70 @@
       return m ? parseInt(m[1]) : null;
     }
 
-    function classifyOs(os, osBuild) {
+    function classifyCpuModel(cpu) {
+      if (!cpu || cpu === '-') return 'Unknown CPU';
+      let clean = cpu
+        .replace(/@\s*[\d\.]+\s*GHz/gi, '')
+        .replace(/\(R\)/gi, '')
+        .replace(/\(TM\)/gi, '')
+        .replace(/with Radeon Graphics/gi, '')
+        .replace(/with Radeon Vega Graphics/gi, '')
+        .replace(/\b\d+-Core Processor\b/gi, '')
+        .replace(/\bSix-Core Processor\b/gi, '')
+        .replace(/\bQuad-Core Processor\b/gi, '')
+        .replace(/\bEight-Core Processor\b/gi, '')
+        .replace(/\bProcessor\b/gi, '')
+        .replace(/\bCPU\b/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      clean = clean.replace(/^(\d+th Gen)\s+/i, '');
+      return clean || cpu;
+    }
+
+    function classifyOs(os, osBuild, mode = osViewMode) {
       if (!os || os === '-') return 'Unknown OS';
       const o = os.toLowerCase();
       const b = parseInt(osBuild) || 0;
+      const displayBuild = (osBuild && osBuild !== '-') ? osBuild : (b ? String(b) : '');
+
+      if (mode === 'build') {
+        if (b > 0) {
+          let verName = '';
+          if (o.includes('server')) verName = 'Server';
+          else if (b >= 26300) verName = 'Win 11 26H2';
+          else if (b >= 26100) verName = 'Win 11 24H2';
+          else if (b >= 22631) verName = 'Win 11 23H2';
+          else if (b >= 22621) verName = 'Win 11 22H2';
+          else if (b >= 22000) verName = 'Win 11 21H2';
+          else if (b >= 19045) verName = 'Win 10 22H2';
+          else if (b >= 19044) verName = 'Win 10 21H2';
+          else if (b >= 19043) verName = 'Win 10 21H1';
+          else if (b >= 19042) verName = 'Win 10 20H2';
+          else if (b >= 19041) verName = 'Win 10 2004';
+          else if (b >= 10240) verName = 'Win 10';
+          else if (o.includes('windows 7')) verName = 'Win 7';
+          else verName = os;
+          return 'Build ' + displayBuild + ' (' + verName + ')';
+        }
+        return 'Build - (' + os + ')';
+      }
+
+      // Mode: 'ver' (Version Name with Build reference)
+      if (o.includes('server')) return b > 0 ? 'Windows Server (Build ' + displayBuild + ')' : 'Windows Server';
       if (o.includes('windows 11') || b >= 22000) {
-        if (b >= 26100) return 'Windows 11 (24H2)';
-        if (b >= 22631) return 'Windows 11 (23H2)';
-        if (b >= 22621) return 'Windows 11 (22H2)';
-        return 'Windows 11';
+        if (b >= 26300) return 'Windows 11 (26H2 • Build ' + (displayBuild || '26300+') + ')';
+        if (b >= 26100) return 'Windows 11 (24H2 • Build ' + (displayBuild || '26100+') + ')';
+        if (b >= 22631) return 'Windows 11 (23H2 • Build ' + (displayBuild || '22631') + ')';
+        if (b >= 22621) return 'Windows 11 (22H2 • Build ' + (displayBuild || '22621') + ')';
+        return 'Windows 11 (Build ' + (displayBuild || '22000') + ')';
       }
       if (o.includes('windows 10') || (b >= 10240 && b < 22000)) {
-        if (b >= 19045) return 'Windows 10 (22H2)';
-        if (b >= 19044) return 'Windows 10 (21H2)';
-        return 'Windows 10';
+        if (b >= 19045) return 'Windows 10 (22H2 • Build ' + (displayBuild || '19045') + ')';
+        if (b >= 19044) return 'Windows 10 (21H2 • Build ' + (displayBuild || '19044') + ')';
+        return 'Windows 10 (Build ' + (displayBuild || '10240') + ')';
       }
-      if (o.includes('server')) return 'Windows Server';
-      if (o.includes('windows 7') || o.includes('windows 8')) return 'Legacy Windows (7/8)';
-      return os;
+      if (o.includes('windows 7') || o.includes('windows 8')) return 'Legacy Windows (Build ' + (displayBuild || '7/8') + ')';
+      return b > 0 ? os + ' (Build ' + displayBuild + ')' : os;
     }
 
     function classifyBrand(maker) {
@@ -5450,11 +5473,12 @@
 
       // 5. Zone 2: CPU Breakdown
       const cpuMap = {};
+      const cpuDrillType = (cpuViewMode === 'model') ? 'cpuModel' : ((cpuViewMode === 'gen') ? 'cpuGen' : 'cpuTier');
       pcs.forEach(p => {
-        const key = (cpuViewMode === 'gen') ? classifyCpuGen(p.CPU) : classifyCpuTier(p.CPU);
+        const key = (cpuViewMode === 'model') ? classifyCpuModel(p.CPU) : ((cpuViewMode === 'gen') ? classifyCpuGen(p.CPU) : classifyCpuTier(p.CPU));
         cpuMap[key] = (cpuMap[key] || 0) + 1;
       });
-      renderBarGroup('dashCpuBarsContainer', cpuMap, cpuViewMode === 'gen' ? 'cpuGen' : 'cpuTier', 'gradient-cyan');
+      renderBarGroup('dashCpuBarsContainer', cpuMap, cpuDrillType, 'gradient-cyan');
 
       // 6. Zone 2: RAM Memory Breakdown
       const ramMap = {};
@@ -5470,9 +5494,9 @@
       const osMap = {};
       let win11Count = 0;
       pcs.forEach(p => {
-        const key = classifyOs(p.OS, p.OSBuild);
+        const key = classifyOs(p.OS, p.OSBuild, osViewMode);
         osMap[key] = (osMap[key] || 0) + 1;
-        if (key.includes('Windows 11')) win11Count++;
+        if (key.includes('Windows 11') || key.includes('Win 11')) win11Count++;
       });
       renderBarGroup('dashOsBarsContainer', osMap, 'os', 'gradient-purple');
       const lblDashWin11Pct = document.getElementById('lblDashWin11Pct');
@@ -5851,47 +5875,6 @@
     // Network & Wi-Fi Probing Presets and Port Toggles
     window.togglePortChip = function(btn) {
       btn.classList.toggle('active');
-    };
-
-    window.setNetPreset = function(preset) {
-      const btnLan = document.getElementById('btnNetPresetLan');
-      const btnWifi = document.getElementById('btnNetPresetWifi');
-      const selMethod = document.getElementById('selPingMethod');
-      const numTimeout = document.getElementById('numPingTimeout');
-      const numProbes = document.getElementById('numPingProbes');
-      const numDelay = document.getElementById('numThreadDelay');
-      const boxPorts = document.getElementById('boxPortPresets');
-
-      if (btnLan) btnLan.classList.toggle('active', preset === 'lan');
-      if (btnWifi) btnWifi.classList.toggle('active', preset === 'wifi');
-
-      if (preset === 'wifi') {
-        if (selMethod) selMethod.value = 'combined';
-        if (numTimeout) numTimeout.value = 1500;
-        if (numProbes) numProbes.value = 3;
-        if (numDelay) numDelay.value = 30;
-        if (boxPorts) {
-          const wifiPorts = ['135', '445', '5985', '5900', '5986', '3389', '139'];
-          boxPorts.querySelectorAll('.preset-chip').forEach(b => {
-            const p = b.getAttribute('data-port');
-            b.classList.toggle('active', wifiPorts.includes(p));
-          });
-        }
-        showToast('Wi-Fi Probing preset applied (Timeout: 1500ms, Probes: 3, Delay: 30ms, Ports: 135, 445, 5985, 5900, 5986, 3389, 139)', 'info');
-      } else {
-        if (selMethod) selMethod.value = 'combined';
-        if (numTimeout) numTimeout.value = 1000;
-        if (numProbes) numProbes.value = 2;
-        if (numDelay) numDelay.value = 20;
-        if (boxPorts) {
-          const lanPorts = ['135', '445', '5985', '5900'];
-          boxPorts.querySelectorAll('.preset-chip').forEach(b => {
-            const p = b.getAttribute('data-port');
-            b.classList.toggle('active', lanPorts.includes(p));
-          });
-        }
-        showToast('Standard LAN probing preset applied (Ports: 135, 445, 5985, 5900)', 'info');
-      }
     };
 
     // Source Selection
@@ -6319,7 +6302,6 @@
       const filtered = allScannedPCs.filter(pc => {
         const matchesFilter = (currentFilter === 'all') ||
           (currentFilter === 'OK' && pc.Status === 'OK') ||
-          (currentFilter === 'Partial' && pc.Status && pc.Status.includes('Partial')) ||
           (currentFilter === 'Offline' && pc.Status && pc.Status.includes('Offline')) ||
           (currentFilter === 'Error' && pc.Status && pc.Status.includes('Error'));
         const matchesSearch = !q ||
@@ -6344,7 +6326,8 @@
           if (type === 'ram' && classifyRam(pc.RAM_GB) !== value) return false;
           if (type === 'cpuTier' && classifyCpuTier(pc.CPU) !== value) return false;
           if (type === 'cpuGen' && classifyCpuGen(pc.CPU) !== value) return false;
-          if (type === 'os' && classifyOs(pc.OS, pc.OSBuild) !== value) return false;
+          if (type === 'cpuModel' && classifyCpuModel(pc.CPU) !== value) return false;
+          if (type === 'os' && classifyOs(pc.OS, pc.OSBuild, osViewMode) !== value) return false;
           if (type === 'brand' && classifyBrand(pc.Maker) !== value) return false;
           if (type === 'office' && classifyOffice(pc.Office_License) !== value) return false;
           if (type === 'winLic' && classifyWinLicense(pc.Win_License) !== value) return false;
@@ -6390,14 +6373,14 @@
             hasTooltip = true;
             tooltipText = pc.Status_Detail;
           }
-        } else if (pc.Status === 'Partial' || (pc.Status && pc.Status.includes('Partial'))) {
-          badgeClass = 'partial';
-          statusDisplay = 'Partial ⓘ';
-          hasTooltip = true;
-          tooltipText = pc.Status_Detail || 'Partial recovery: Management ports blocked; metadata from NetBIOS/DNS/AD';
         } else if (pc.Status === 'Scanning') {
           badgeClass = 'scanning';
           statusDisplay = 'Scanning';
+        } else if (pc.Status && (pc.Status === 'Deep Scanning' || pc.Status.includes('Deep Scan'))) {
+          badgeClass = 'deep-scan';
+          statusDisplay = '⚡ Deep Scan';
+          hasTooltip = true;
+          tooltipText = pc.Status_Detail || 'Deep Penetration Probing in progress...';
         } else if (pc.Status && (pc.Status.startsWith('Error') || pc.Status.includes('Error') || pc.Status.includes('Failed'))) {
           badgeClass = 'error';
           statusDisplay = 'Error ⓘ';
@@ -6441,7 +6424,8 @@
         const methodText = pc.Method || "-";
         let methodCls = "default";
         const mLower = methodText.toLowerCase();
-        if (mLower.includes("ping") || mLower.includes("icmp")) methodCls = "icmp";
+        if (methodText.includes('⚡')) methodCls = 'deep';
+        else if (mLower.includes("ping") || mLower.includes("icmp")) methodCls = "icmp";
         else if (mLower.includes("tcp")) methodCls = "tcp";
         else if (mLower.includes("winrm")) methodCls = "winrm";
         else if (mLower.includes("localhost") || mLower.includes("loopback")) methodCls = "local";
@@ -6516,7 +6500,7 @@
         return `
           <tr class="sw-row-clickable" onclick="openPcSoftwareModal('${escapeHtml(pc.PCName)}')">
             <td>${statusBadge}</td>
-            <td style="font-size:0.72rem; color:var(--text-secondary);">${escapeHtml(pc.Method || '-')}</td>
+            <td style="font-size:0.72rem; color:var(--text-secondary);">${pc.Method && pc.Method.includes('⚡') ? `<span class="method-badge method-deep">${escapeHtml(pc.Method)}</span>` : escapeHtml(pc.Method || '-')}</td>
             <td><span class="pc-name-bold">${escapeHtml(pc.PCName || '-')}</span></td>
             <td style="text-align:center;">${countBadge}</td>
             <td style="font-size:0.75rem; color:var(--text-secondary); max-width:400px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(pc.KeySoftware || '-')}">${escapeHtml(pc.KeySoftware || '-')}</td>
@@ -7069,14 +7053,14 @@
               }
             });
           }
-          return ports.join(',') || '135,445,5985,5900';
+          return ports.join(',') || '135,445,5985,5986,3389,139,80,443';
         })(),
         pingTimeoutMs: parseInt(document.getElementById('numPingTimeout') ? document.getElementById('numPingTimeout').value : '1000', 10) || 1000,
         pingProbes: parseInt(document.getElementById('numPingProbes') ? document.getElementById('numPingProbes').value : '2', 10) || 2,
         threadDelayMs: parseInt(document.getElementById('numThreadDelay') ? document.getElementById('numThreadDelay').value : '20', 10) || 20,
-        enableProtocolFallback: document.getElementById('chkProtocolFallback') ? document.getElementById('chkProtocolFallback').checked : true,
         scanDeadHosts: document.getElementById('chkScanDeadHosts') ? document.getElementById('chkScanDeadHosts').checked : false,
-        skipBroadcast: document.getElementById('chkSkipBroadcast') ? document.getElementById('chkSkipBroadcast').checked : true
+        skipBroadcast: document.getElementById('chkSkipBroadcast') ? document.getElementById('chkSkipBroadcast').checked : true,
+        autoHealDns: document.getElementById('chkAutoHealDns') ? document.getElementById('chkAutoHealDns').checked : true
       };
 
       try {
@@ -7825,7 +7809,7 @@
 
     });
 
-    // Window Close Exit Beacon & Fast Heartbeat Ping
+    // Window Close Exit Beacon & Active Scan Exit Confirmation
     function notifyBackendExit() {
       if (window.__isReloading || window.__exitSent) return;
       window.__exitSent = true;
@@ -7838,15 +7822,32 @@
       }
     }
 
-    window.addEventListener('pagehide', notifyBackendExit);
-    window.addEventListener('beforeunload', notifyBackendExit);
+    // Confirmation prompt if user attempts to close window while a scan is actively running
+    window.addEventListener('beforeunload', (e) => {
+      if (window.__isReloading) return;
+      if (isScanning) {
+        e.preventDefault();
+        e.returnValue = 'A network inventory scan is currently running. Are you sure you want to exit?';
+        return e.returnValue;
+      }
+    });
 
-    // Lightweight 1.5s heartbeat ping to keep backend alive while window is open/minimized
-    setInterval(() => {
+    // Actual teardown beacon only fires after window close is confirmed
+    window.addEventListener('pagehide', notifyBackendExit);
+
+    // Resilient Heartbeat Ping: runs continuously and handles wake-up from sleep/screen-off
+    function sendHeartbeatPing() {
       if (!window.__isClosing) {
         fetch('/api/ping', { cache: 'no-store' }).catch(() => {});
       }
-    }, 1500);
+    }
+    setInterval(sendHeartbeatPing, 1500);
+
+    // Instant Wake-Up & Screen-On Re-sync
+    window.addEventListener('pageshow', () => {
+      sendHeartbeatPing();
+      if (typeof pollTick === 'function') pollTick();
+    });
 
     // Startup Initialization
 

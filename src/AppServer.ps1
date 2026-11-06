@@ -72,6 +72,95 @@ if (-not $HtmlContent) {
     }
 }
 
+# --- Win32 Power & Screen-Off Execution Management ---
+if (-not ([System.Management.Automation.PSTypeName]'FTI.PowerManager').Type) {
+    try {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace FTI {
+    public static class PowerManager {
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern uint SetThreadExecutionState(uint esFlags);
+
+        public const uint ES_CONTINUOUS = 0x80000000;
+        public const uint ES_SYSTEM_REQUIRED = 0x00000001;
+        public const uint ES_AWAYMODE_REQUIRED = 0x00000040;
+    }
+}
+'@ -ErrorAction SilentlyContinue
+    } catch {}
+}
+
+# Keep CPU & Network active even when screen turns off or locked
+try {
+    [void][FTI.PowerManager]::SetThreadExecutionState(
+        [FTI.PowerManager]::ES_CONTINUOUS -bor
+        [FTI.PowerManager]::ES_SYSTEM_REQUIRED -bor
+        [FTI.PowerManager]::ES_AWAYMODE_REQUIRED
+    )
+} catch {}
+
+# --- Laptop Lid-Close Awake Guard with Automatic Restore ---
+$script:lidBackupFile = Join-Path $localApp 'FTI_PC_Inventory_Tool\lid_power_backup.json'
+
+function Enable-LidCloseAwakeGuard {
+    try {
+        $backupDir = [System.IO.Path]::GetDirectoryName($script:lidBackupFile)
+        if (-not (Test-Path $backupDir)) { [void](New-Item -ItemType Directory -Path $backupDir -Force) }
+
+        # Query existing scheme LIDACTION
+        $qh = & powercfg.exe /qh SCHEME_CURRENT SUB_BUTTONS LIDACTION 2>$null
+        $origAc = 1
+        $origDc = 1
+        if ($qh) {
+            foreach ($line in ($qh -split "`r?`n")) {
+                if ($line -match 'Current AC Power Setting Index:\s*0x([0-9a-fA-F]+)') {
+                    $origAc = [Convert]::ToInt32($matches[1], 16)
+                }
+                if ($line -match 'Current DC Power Setting Index:\s*0x([0-9a-fA-F]+)') {
+                    $origDc = [Convert]::ToInt32($matches[1], 16)
+                }
+            }
+        }
+
+        # Only create backup file if it doesn't already exist from a previous ungraceful termination
+        if (-not (Test-Path $script:lidBackupFile)) {
+            $backupData = @{ ac = $origAc; dc = $origDc; timestamp = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json
+            [System.IO.File]::WriteAllText($script:lidBackupFile, $backupData, [System.Text.Encoding]::UTF8)
+        }
+
+        # Set LIDACTION = 0 (Do Nothing) for both AC and DC while tool is running
+        & powercfg.exe /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0 | Out-Null
+        & powercfg.exe /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0 | Out-Null
+        & powercfg.exe /setactive SCHEME_CURRENT | Out-Null
+    } catch {}
+}
+
+function Restore-LidCloseAwakeGuard {
+    try {
+        if (Test-Path $script:lidBackupFile) {
+            $content = [System.IO.File]::ReadAllText($script:lidBackupFile, [System.Text.Encoding]::UTF8)
+            $json = $content | ConvertFrom-Json
+            $restAc = if ($json.ac -ge 0) { [int]$json.ac } else { 1 }
+            $restDc = if ($json.dc -ge 0) { [int]$json.dc } else { 1 }
+
+            & powercfg.exe /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION $restAc | Out-Null
+            & powercfg.exe /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION $restDc | Out-Null
+            & powercfg.exe /setactive SCHEME_CURRENT | Out-Null
+
+            Remove-Item -LiteralPath $script:lidBackupFile -Force -ErrorAction SilentlyContinue
+        }
+        # Reset Power Execution State
+        if (([System.Management.Automation.PSTypeName]'FTI.PowerManager').Type) {
+            [void][FTI.PowerManager]::SetThreadExecutionState([FTI.PowerManager]::ES_CONTINUOUS)
+        }
+    } catch {}
+}
+
+Enable-LidCloseAwakeGuard
+
 # --- 2. Check Administrator Privilege ---
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
@@ -728,13 +817,13 @@ function Start-ExecutionScan([hashtable]$params) {
 
     # Pass Network & Wi-Fi Probing settings
     $pingMethod = if ($params.ContainsKey('pingMethod') -and $params.pingMethod) { [string]$params.pingMethod } else { 'combined' }
-    $probePorts = if ($params.ContainsKey('probePorts') -and $params.probePorts) { [string]$params.probePorts } else { '135,445,5985,5900' }
+    $probePorts = if ($params.ContainsKey('probePorts') -and $params.probePorts) { [string]$params.probePorts } else { '135,445,5985,5986,3389,139,80,443,5900' }
     $pingTimeoutMs = if ($params.ContainsKey('pingTimeoutMs') -and [int]$params.pingTimeoutMs -ge 100) { [int]$params.pingTimeoutMs } else { 1000 }
     $pingProbes = if ($params.ContainsKey('pingProbes') -and [int]$params.pingProbes -ge 1) { [int]$params.pingProbes } else { 2 }
     $threadDelayMs = if ($params.ContainsKey('threadDelayMs') -and [int]$params.threadDelayMs -ge 0) { [int]$params.threadDelayMs } else { 20 }
     $scanDeadHosts = if ($params.ContainsKey('scanDeadHosts')) { [bool]$params.scanDeadHosts } else { $false }
     $skipBroadcast = if ($params.ContainsKey('skipBroadcast')) { [bool]$params.skipBroadcast } else { $true }
-    $enableProtocolFallback = if ($params.ContainsKey('enableProtocolFallback')) { [bool]$params.enableProtocolFallback } else { $true }
+    $autoHealDns = if ($params.ContainsKey('autoHealDns')) { [bool]$params.autoHealDns } else { $true }
 
     [void]$script:psInstance.AddParameter('PingMethod', $pingMethod)
     [void]$script:psInstance.AddParameter('ProbePorts', $probePorts)
@@ -743,9 +832,9 @@ function Start-ExecutionScan([hashtable]$params) {
     [void]$script:psInstance.AddParameter('ThreadDelayMs', $threadDelayMs)
     [void]$script:psInstance.AddParameter('ScanDeadHosts', $scanDeadHosts)
     [void]$script:psInstance.AddParameter('SkipBroadcast', $skipBroadcast)
-    [void]$script:psInstance.AddParameter('EnableProtocolFallback', $enableProtocolFallback)
+    [void]$script:psInstance.AddParameter('AutoHealDns', $autoHealDns)
 
-    Write-SystemLog 'INFO' ("Network Probing: Method=$pingMethod, Ports=$probePorts, Timeout=${pingTimeoutMs}ms, Probes=$pingProbes, Delay=${threadDelayMs}ms, DeadHosts=$scanDeadHosts")
+    Write-SystemLog 'INFO' ("Network Probing: Method=$pingMethod, Ports=$probePorts, Timeout=${pingTimeoutMs}ms, Probes=$pingProbes, Delay=${threadDelayMs}ms, DeadHosts=$scanDeadHosts, AutoHealDns=$autoHealDns")
 
     if ($params.source -eq 'localhost') {
         [void]$script:psInstance.AddParameter('ScanLocalhost', $true)
@@ -985,11 +1074,12 @@ if (-not (Test-Path $tempProfile)) {
 }
 
 $appUrl = "http://127.0.0.1:$port/"
-$appArgs = "--app=`"$appUrl`" --user-data-dir=`"$tempProfile`" --window-size=1260,860 --disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows"
+$appArgs = "--app=`"$appUrl`" --user-data-dir=`"$tempProfile`" --window-size=1260,860 --disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows --disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling"
 
+$script:browserProc = $null
 try {
     if ($browserExe) {
-        Start-Process -FilePath $browserExe -ArgumentList $appArgs | Out-Null
+        $script:browserProc = Start-Process -FilePath $browserExe -ArgumentList $appArgs -PassThru
     } else {
         Start-Process $appUrl | Out-Null
     }
@@ -1053,12 +1143,41 @@ while ($running) {
         }
     }
 
-    # 2. Heartbeat timeout fallback (if browser window was closed/terminated without firing exit beacon)
+    # 2. Hardened Window Process & Heartbeat Check (Screen-Off & Lid-Close Resilient)
     if ($script:hasConnected) {
-        if (([System.DateTime]::Now - $script:lastHeartbeat).TotalSeconds -gt 20) {
-            Write-SystemLog 'INFO' 'UI heartbeat lost for >20s (window closed). Terminating background process...'
-            $running = $false
-            break
+        $secondsSinceHeartbeat = ([System.DateTime]::Now - $script:lastHeartbeat).TotalSeconds
+        if ($secondsSinceHeartbeat -gt 25) {
+            # Rule 1: Never kill backend while an active scan or schedule is running
+            if ($scanRunning -or $script:inAppSchedule.enabled) {
+                # Keep server alive during active background tasks even if screen is off/sleeping
+                $script:lastHeartbeat = [System.DateTime]::Now
+            } else {
+                # Rule 2: Check if browser process is truly alive before terminating
+                $browserAlive = $false
+                try {
+                    if ($script:browserProc -and -not $script:browserProc.HasExited) {
+                        $browserAlive = $true
+                    } else {
+                        # Fallback: check if Edge/Chrome process with this temp profile still exists
+                        $runningBrowsers = Get-Process -Name 'msedge', 'chrome' -ErrorAction SilentlyContinue
+                        if ($runningBrowsers) {
+                            $browserAlive = $true
+                        }
+                    }
+                } catch {
+                    $browserAlive = $false
+                }
+
+                if ($browserAlive) {
+                    # Screen was turned off or laptop lid closed - window process still alive!
+                    # Do NOT kill the server; refresh heartbeat timestamp and continue execution.
+                    $script:lastHeartbeat = [System.DateTime]::Now
+                } else {
+                    Write-SystemLog 'INFO' 'UI window process closed. Terminating background process...'
+                    $running = $false
+                    break
+                }
+            }
         }
     } else {
         # Allow 60 seconds for initial browser launch
@@ -1862,6 +1981,8 @@ while ($running) {
 }
 
 # --- 8. Cleanup on Exit ---
+Restore-LidCloseAwakeGuard
+
 if ($script:psInstance) {
     try { $script:psInstance.Stop() } catch {}
     try { $script:psInstance.Dispose() } catch {}

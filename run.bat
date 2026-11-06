@@ -14,6 +14,12 @@ taskkill /F /IM FTI_PC_Inventory.exe >nul 2>&1
 :: Allow passing --engine to force direct script launch
 if "%1"=="--engine" goto RUN_POWERSHELL
 
+if exist "%~dp0dist\FTI_PC_Inventory.exe" (
+    echo Starting standalone application from dist...
+    start "" "%~dp0dist\FTI_PC_Inventory.exe"
+    exit /b
+)
+
 if exist "%LOCALAPPDATA%\FTI_PC_Inventory_Tool\dist\FTI_PC_Inventory.exe" (
     echo Starting standalone application...
     start "" "%LOCALAPPDATA%\FTI_PC_Inventory_Tool\dist\FTI_PC_Inventory.exe"
