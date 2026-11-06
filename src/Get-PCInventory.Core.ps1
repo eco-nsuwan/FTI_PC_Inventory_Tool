@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   PC inventory for domain PCs: Hardware + Installed Software (both ON by default). PowerShell 5.1, read-only.
   Core engine module for FTI PC Inventory Tool.
@@ -13,7 +13,7 @@ param(
     [string]$ComputerListFile,
     [int]$DaysActive = 30,           # only PCs that logged on to the domain within N days (AD mode, 0 = all)
     [int]$Throttle = 20,
-    [string]$OutDir = 'C:\Inventory',
+    [string]$OutDir = 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data',
     [switch]$FallbackToAD,           # If ComputerListFile is empty, fallback to AD if set
     [switch]$ScanLocalhost,          # Scan current machine directly
     [switch]$MasterMode = $true,     # Sync with Master Database (Hardware_Master.csv)

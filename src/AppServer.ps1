@@ -1,7 +1,7 @@
-param(
+﻿param(
     [switch]$Silent,
     [switch]$ScheduledRun,
-    [string]$OutDir = 'C:\Inventory',
+    [string]$OutDir = 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data',
     [string]$ComputerListFile,
     [switch]$ScanLocalhost
 )
@@ -247,14 +247,14 @@ $script:inAppSchedule = @{
     lastRunAt       = $null
 }
 $script:lastScanParams = $null
-$script:lastOutDir = 'C:\Inventory'
+$script:lastOutDir = 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data'
 
 # Helper: Preload existing Master DB on backend startup for instant Dashboard & Grid display
 function Load-InitialMasterDb() {
     try {
         $masterPath = Join-Path $script:lastOutDir 'Hardware_Master.csv'
         if (-not (Test-Path -LiteralPath $masterPath)) {
-            $masterPath = 'C:\Inventory\Hardware_Master.csv'
+            $masterPath = 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data\Hardware_Master.csv'
         }
         if (Test-Path -LiteralPath $masterPath) {
             $csvHw = @(Import-Csv -LiteralPath $masterPath -Encoding UTF8)
@@ -301,7 +301,7 @@ function Load-InitialMasterDb() {
 
         $swMasterPath = Join-Path $script:lastOutDir 'Software_Master.csv'
         if (-not (Test-Path -LiteralPath $swMasterPath)) {
-            $swMasterPath = 'C:\Inventory\Software_Master.csv'
+            $swMasterPath = 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data\Software_Master.csv'
         }
         if (Test-Path -LiteralPath $swMasterPath) {
             $csvSw = @(Import-Csv -LiteralPath $swMasterPath -Encoding UTF8)
@@ -401,7 +401,7 @@ function Get-FtiWinTaskInfo() {
     try {
         $logPath = Join-Path $script:lastOutDir 'ScheduleRun.log'
         if (-not (Test-Path -LiteralPath $logPath)) {
-            $logPath = 'C:\Inventory\ScheduleRun.log'
+            $logPath = 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data\ScheduleRun.log'
         }
         if (Test-Path -LiteralPath $logPath) {
             $lines = Get-Content -LiteralPath $logPath -Tail 5 -Encoding UTF8 -ErrorAction SilentlyContinue
@@ -754,7 +754,7 @@ function Start-ExecutionScan([hashtable]$params) {
     if ($script:psInstance) { return $false }
 
     $outDir = [string]$params.outDir
-    if ([string]::IsNullOrWhiteSpace($outDir)) { $outDir = 'C:\Inventory' }
+    if ([string]::IsNullOrWhiteSpace($outDir)) { $outDir = 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data' }
     $script:lastOutDir = $outDir
 
     if ($params.source -eq 'file') {
@@ -852,7 +852,7 @@ function Start-ExecutionScan([hashtable]$params) {
 function Start-DemoScan {
     if ($script:psInstance) { return $false }
 
-    $demoOutDir = 'C:\Inventory\Demo'
+    $demoOutDir = 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data\Demo'
     if (-not (Test-Path -LiteralPath $demoOutDir)) {
         [void](New-Item -ItemType Directory -Path $demoOutDir -Force)
     }
@@ -1539,7 +1539,7 @@ while ($running) {
             elseif ($path -eq '/api/master/status' -and $method -eq 'GET') {
                 $outDirParam = $req.QueryString['outDir']
                 if ([string]::IsNullOrWhiteSpace($outDirParam)) {
-                    $outDirParam = if ($script:lastOutDir) { $script:lastOutDir } else { 'C:\Inventory' }
+                    $outDirParam = if ($script:lastOutDir) { $script:lastOutDir } else { 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data' }
                 }
 
                 $hwMasterPath   = Join-Path $outDirParam 'Hardware_Master.csv'
@@ -1643,7 +1643,7 @@ while ($running) {
 
                 $outDirParam = [string]$params.outDir
                 if ([string]::IsNullOrWhiteSpace($outDirParam)) {
-                    $outDirParam = if ($script:lastOutDir) { $script:lastOutDir } else { 'C:\Inventory' }
+                    $outDirParam = if ($script:lastOutDir) { $script:lastOutDir } else { 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data' }
                 }
 
                 $hwMasterPath = Join-Path $outDirParam 'Hardware_Master.csv'
@@ -1916,7 +1916,7 @@ while ($running) {
                 $reader = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
                 $body = $reader.ReadToEnd()
                 $params = $body | ConvertFrom-Json
-                $dir = if ($params.folder) { $params.folder } else { 'C:\Inventory' }
+                $dir = if ($params.folder) { $params.folder } else { 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data' }
 
                 if (-not (Test-Path $dir)) {
                     try { New-Item -ItemType Directory -Path $dir -Force | Out-Null } catch {}

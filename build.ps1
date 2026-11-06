@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Enterprise Build script for FTI PC Inventory Tool.
   Compiles a native, malware-free C# executable (.NET Framework 4.8 / 4.7.2)
@@ -258,7 +258,7 @@ $htmlB64     = [System.Convert]::ToBase64String($htmlBytes)
 $serverCode  = [System.IO.File]::ReadAllText($srcServer, [System.Text.Encoding]::UTF8)
 
 # Extract param block from $serverCode to ensure it is the very first statement
-$paramBlock = "param([switch]`$Silent, [switch]`$ScheduledRun, [string]`$OutDir = 'C:\Inventory')"
+$paramBlock = "param([switch]`$Silent, [switch]`$ScheduledRun, [string]`$OutDir = 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data')"
 $restOfServer = $serverCode
 if ($serverCode -match '(?ms)^\s*param\s*\((.*?)\)\s*(.*)$') {
     $paramBlock = "param($($matches[1]))"

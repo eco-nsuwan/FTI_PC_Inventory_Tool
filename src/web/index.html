@@ -8,7 +8,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>FTI PC Inventory Tool - v2026.11.06.3</title>
+  <title>FTI PC Inventory Tool - v2026.11.06.4</title>
 
   <script>
 
@@ -3741,7 +3741,7 @@
 
         <span>FTI PC Inventory Tool</span>
 
-        <span class="version-tag has-tooltip" data-tooltip="Build: 2026-11-06 09:34:05" id="appVersionTag">v2026.11.06.3 Enterprise</span>
+        <span class="version-tag has-tooltip" data-tooltip="Build: 2026-11-06 14:42:20" id="appVersionTag">v2026.11.06.4 Enterprise</span>
 
       </div>
 
@@ -3933,7 +3933,7 @@
 
               <div class="input-group-row">
 
-                <input type="text" id="txtOutDir" value="C:\Inventory" class="input-compact">
+                <input type="text" id="txtOutDir" value="C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data" class="input-compact">
 
                 <button class="btn-browse" id="btnBrowseFolder">Browse...</button>
 
@@ -3941,7 +3941,7 @@
 
               <div style="display: flex; gap: 4px; margin-top: 4px;">
 
-                <button type="button" class="preset-chip" onclick="setOutDirPreset('C:\\Inventory')">C:\Inv</button>
+                <button type="button" class="preset-chip" onclick="setOutDirPreset('C:\\Users\\ax_admin.FUNCTION59\\Desktop\\FTI_INTERN_PROGRAMS\\Inventory_Tool_data')">Data Dir</button>
 
                 <button type="button" class="preset-chip" onclick="setOutDirPreset('D:\\Inventory')">D:\Inv</button>
 
@@ -6909,7 +6909,7 @@
 
     btnOpenFolder.addEventListener('click', async () => {
 
-      const outDir = txtOutDir.value.trim() || 'C:\\Inventory';
+      const outDir = txtOutDir.value.trim() || 'C:\\Users\\ax_admin.FUNCTION59\\Desktop\\FTI_INTERN_PROGRAMS\\Inventory_Tool_data';
 
       try {
 
@@ -7033,7 +7033,7 @@
         includeHidden: document.getElementById('chkHidden').checked,
 
         throttle: parseInt(document.getElementById('numThrottle').value) || 20,
-        outDir: txtOutDir.value.trim() || 'C:\\Inventory',
+        outDir: txtOutDir.value.trim() || 'C:\\Users\\ax_admin.FUNCTION59\\Desktop\\FTI_INTERN_PROGRAMS\\Inventory_Tool_data',
         autoHtml: chkAutoHtml.checked,
 
         // Network & Wi-Fi Probing Settings
@@ -7569,7 +7569,7 @@
 
     async function fetchMasterStatus() {
 
-      const outDir = txtOutDir ? txtOutDir.value.trim() : 'C:\\Inventory';
+      const outDir = txtOutDir ? txtOutDir.value.trim() : 'C:\\Users\\ax_admin.FUNCTION59\\Desktop\\FTI_INTERN_PROGRAMS\\Inventory_Tool_data';
 
       try {
 
@@ -7617,7 +7617,7 @@
 
     window.openMasterFile = async function(type) {
 
-      const outDir = txtOutDir.value.trim() || 'C:\\Inventory';
+      const outDir = txtOutDir.value.trim() || 'C:\\Users\\ax_admin.FUNCTION59\\Desktop\\FTI_INTERN_PROGRAMS\\Inventory_Tool_data';
 
       try {
 
@@ -7643,7 +7643,7 @@
 
     window.exportMasterBackup = async function(type) {
 
-      const outDir = txtOutDir.value.trim() || 'C:\\Inventory';
+      const outDir = txtOutDir.value.trim() || 'C:\\Users\\ax_admin.FUNCTION59\\Desktop\\FTI_INTERN_PROGRAMS\\Inventory_Tool_data';
 
       try {
 
