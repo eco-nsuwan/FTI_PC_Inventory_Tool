@@ -1,6 +1,10 @@
-# FTI PC Inventory Tool (Enterprise Edition v2.5)
+# FTI PC Inventory Tool (Enterprise Edition v2026.11)
 
 โปรแกรมตรวจสอบและบันทึกข้อมูล **Hardware** และ **Software ที่ติดตั้ง** ของเครื่อง PC ในโดเมนองค์กร (~200 เครื่องขึ้นไป) ในรูปแบบหน้าต่าง **Windows GUI** ทรงพลัง (.exe) ใช้งานง่าย รองรับระบบ **ฐานข้อมูลหลัก Master Database สะสมรอบสแกน**, **ตั้งเวลาสแกนอัตโนมัติ (Task Scheduler & In-App Countdown)**, **สแกนซ้ำเฉพาะเครื่องที่ออฟไลน์**, และออกรายงานเป็นไฟล์ **CSV** รวมทั้ง **HTML Dashboard แบบแยกกล่องรายเครื่อง**
+
+> 📚 **เอกสารสถาปัตยกรรม 4 เลเยอร์ (Architecture & Interactive Guide):**
+> - 🌐 **Interactive Web Explorer:** [`docs/FTI_PC_Inventory_Architecture_Guide.html`](./docs/FTI_PC_Inventory_Architecture_Guide.html) *(เปิดดูผ่านเบราว์เซอร์พร้อมระบบจำลองการทำงาน)*
+> - 📄 **คู่มือเชิงลึก (Markdown):** [`docs/ARCHITECTURE_4LAYERS.md`](./docs/ARCHITECTURE_4LAYERS.md)
 
 ---
 

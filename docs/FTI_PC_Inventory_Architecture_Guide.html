@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="th" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FTI PC Inventory Tool — 4-Layer Architecture Guide</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f0f9ff', 500: '#0284c7', 600: '#0369a1', 700: '#075985' },
+            host: { 500: '#f97316', 600: '#ea580c' },
+            server: { 500: '#3b82f6', 600: '#2563eb' },
+            scanner: { 500: '#10b981', 600: '#059669' },
+            ui: { 500: '#8b5cf6', 600: '#7c3aed' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    body { font-family: 'Sarabun', sans-serif; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+    .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    .tab-active { border-color: #38bdf8; color: #38bdf8; background: rgba(56, 189, 248, 0.1); }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 min-h-screen">
+
+  <!-- Header & Navigation Bar -->
+  <header class="sticky top-0 z-50 glass-card border-b border-slate-800 bg-[#0b0f19]/90 backdrop-blur-md px-6 py-4">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-sky-500/20 font-bold text-lg text-white">
+          FTI
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            FTI PC Inventory Tool
+            <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v2026.11 Enterprise</span>
+          </h1>
+          <p class="text-xs text-slate-400">คู่มือสถาปัตยกรรมระบบ 4 เลเยอร์ (Deep-Dive & Interactive Guide)</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 md:pb-0">
+        <button onclick="switchTab('overview')" id="nav-overview" class="tab-btn tab-active px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 border border-transparent">
+          🌐 ภาพรวมทั้งระบบ
+        </button>
+        <button onclick="switchTab('layer1')" id="nav-layer1" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1.5 border border-transparent">
+          <span class="w-2 h-2 rounded-full bg-orange-500"></span> Layer 1: C# Host
+        </button>
+        <button onclick="switchTab('layer2')" id="nav-layer2" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1.5 border border-transparent">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span> Layer 2: REST Server
+        </button>
+        <button onclick="switchTab('layer3')" id="nav-layer3" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1.5 border border-transparent">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Layer 3: Scanner Core
+        </button>
+        <button onclick="switchTab('layer4')" id="nav-layer4" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1.5 border border-transparent">
+          <span class="w-2 h-2 rounded-full bg-purple-500"></span> Layer 4: Web UI
+        </button>
+        <button onclick="switchTab('simulator')" id="nav-simulator" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-all flex items-center gap-1.5">
+          ⚡ Interactive Simulator
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-6 py-8">
+
+    <!-- ========================================== -->
+    <!-- TAB: OVERVIEW (ภาพรวมทั้งระบบ 4 เลเยอร์) -->
+    <!-- ========================================== -->
+    <section id="tab-overview" class="tab-content space-y-8">
+      
+      <!-- Hero Banner -->
+      <div class="glass-card rounded-2xl p-6 sm:p-8 bg-gradient-to-br from-slate-900 via-slate-900/90 to-sky-950/40 relative overflow-hidden">
+        <div class="absolute -right-16 -top-16 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative z-10">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold mb-3">
+            Enterprise Architecture Overview
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            โครงสร้างการทำงานสถาปัตยกรรม 4 เลเยอร์
+          </h2>
+          <p class="text-slate-300 text-sm sm:text-base mt-2 max-w-3xl leading-relaxed">
+            FTI PC Inventory Tool ถูกออกแบบด้วยโครงสร้างแบบ Decoupled 4-Tier สอดประสานระหว่าง Native Windows Win32 API, Background REST Engine, Core Scanner เจาะทะลุเครือข่ายระดับ 2-Pass และ Frontend Dashboard ทำให้มีความเร็ว เสถียรภาพ และอัตราการเก็บข้อมูลสำเร็จสูงสุดแม้ปิดหน้าจอหรือพับฝาโน้ตบุ๊ก
+          </p>
+        </div>
+      </div>
+
+      <!-- 4-Layer Architecture Visual Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        
+        <!-- Layer 1 Card -->
+        <div onclick="switchTab('layer1')" class="cursor-pointer glass-card rounded-2xl p-5 border border-orange-500/30 hover:border-orange-500 transition-all hover:-translate-y-1 group">
+          <div class="flex items-center justify-between mb-4">
+            <span class="w-8 h-8 rounded-lg bg-orange-500/20 text-orange-400 font-bold text-sm flex items-center justify-center border border-orange-500/30">L1</span>
+            <span class="text-[11px] text-slate-400 font-mono">src/host/Program.cs</span>
+          </div>
+          <h3 class="font-bold text-white text-base group-hover:text-orange-400 transition-colors">Host & Power Management</h3>
+          <p class="text-xs text-slate-400 mt-1 leading-relaxed">Native C# (.NET 4.8) ด่านหน้าระดับ Supervisor จัดการสิทธิ์ Admin และล็อกระบบพลังงาน</p>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-orange-400/90 space-y-1">
+            <div>🛡️ Auto UAC Elevation</div>
+            <div>⚡ Win32 Power State Guard</div>
+            <div>💻 Laptop Lid-Close Guard</div>
+          </div>
+        </div>
+
+        <!-- Layer 2 Card -->
+        <div onclick="switchTab('layer2')" class="cursor-pointer glass-card rounded-2xl p-5 border border-blue-500/30 hover:border-blue-500 transition-all hover:-translate-y-1 group">
+          <div class="flex items-center justify-between mb-4">
+            <span class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 font-bold text-sm flex items-center justify-center border border-blue-500/30">L2</span>
+            <span class="text-[11px] text-slate-400 font-mono">src/AppServer.ps1</span>
+          </div>
+          <h3 class="font-bold text-white text-base group-hover:text-blue-400 transition-colors">Backend Server & Data Hub</h3>
+          <p class="text-xs text-slate-400 mt-1 leading-relaxed">HttpListener ให้บริการ REST API ควบคุม Multi-threaded Runspace และเชื่อมต่อ Master CSV</p>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-blue-400/90 space-y-1">
+            <div>🌐 Lightweight HttpListener (CORS)</div>
+            <div>🧵 Isolated PowerShell Runspace</div>
+            <div>📂 Realtime Master CSV Sync</div>
+          </div>
+        </div>
+
+        <!-- Layer 3 Card -->
+        <div onclick="switchTab('layer3')" class="cursor-pointer glass-card rounded-2xl p-5 border border-emerald-500/30 hover:border-emerald-500 transition-all hover:-translate-y-1 group">
+          <div class="flex items-center justify-between mb-4">
+            <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold text-sm flex items-center justify-center border border-emerald-500/30">L3</span>
+            <span class="text-[11px] text-slate-400 font-mono">src/Get-PCInventory.Core.ps1</span>
+          </div>
+          <h3 class="font-bold text-white text-base group-hover:text-emerald-400 transition-colors">Scanner Core & Penetration</h3>
+          <p class="text-xs text-slate-400 mt-1 leading-relaxed">หัวใจการสแกนระบบเครือข่าย ตรวจจับ Ghost-DNS และปลดล็อก 5-Stage Fallback</p>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-emerald-400/90 space-y-1">
+            <div>📡 9-Port TCP Pre-flight Probe</div>
+            <div>👻 Ghost-DNS Hunter (UDP 137)</div>
+            <div>🔄 5-Stage Rescue Protocol</div>
+          </div>
+        </div>
+
+        <!-- Layer 4 Card -->
+        <div onclick="switchTab('layer4')" class="cursor-pointer glass-card rounded-2xl p-5 border border-purple-500/30 hover:border-purple-500 transition-all hover:-translate-y-1 group">
+          <div class="flex items-center justify-between mb-4">
+            <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 font-bold text-sm flex items-center justify-center border border-purple-500/30">L4</span>
+            <span class="text-[11px] text-slate-400 font-mono">src/web/index.html</span>
+          </div>
+          <h3 class="font-bold text-white text-base group-hover:text-purple-400 transition-colors">Executive Web Dashboard</h3>
+          <p class="text-xs text-slate-400 mt-1 leading-relaxed">Frontend แสดงผลและวิเคราะห์ข้อมูลแบบ Realtime พร้อมตาราง Excel Drag Resizer</p>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-purple-400/90 space-y-1">
+            <div>📊 Interactive Grid & Resizer</div>
+            <div>📈 Executive KPI & Charts</div>
+            <div>⚠️ Actionable Watchlist Filter</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Execution Sequence Flowchart -->
+      <div class="glass-card rounded-2xl p-6 border border-slate-800">
+        <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+          <span>🔄</span> End-to-End Execution Sequence
+        </h3>
+        <p class="text-xs text-slate-400 mb-6">ลำดับขั้นตอนการส่งต่อข้อมูลตั้งแต่เริ่มเปิดไฟล์ .exe จนถึงผลลัพธ์ปรากฏบนหน้าจอและเซฟลงไฟล์</p>
+
+        <div class="relative">
+          <!-- Flow Line -->
+          <div class="hidden md:block absolute top-1/2 left-8 right-8 h-0.5 bg-gradient-to-r from-orange-500 via-blue-500 via-emerald-500 to-purple-500 -translate-y-1/2 z-0"></div>
+
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-4 relative z-10">
+            
+            <div class="bg-slate-900 border border-orange-500/40 rounded-xl p-4 text-center">
+              <div class="w-8 h-8 mx-auto rounded-full bg-orange-500 text-slate-950 font-bold text-xs flex items-center justify-center mb-2">1</div>
+              <div class="text-xs font-bold text-orange-400">Host Launch</div>
+              <p class="text-[11px] text-slate-400 mt-1">UAC Admin + ล็อก Power State + กันพับจอหลับ</p>
+            </div>
+
+            <div class="bg-slate-900 border border-blue-500/40 rounded-xl p-4 text-center">
+              <div class="w-8 h-8 mx-auto rounded-full bg-blue-500 text-slate-950 font-bold text-xs flex items-center justify-center mb-2">2</div>
+              <div class="text-xs font-bold text-blue-400">Server & UI Start</div>
+              <p class="text-[11px] text-slate-400 mt-1">HttpListener เปิดพอร์ต + โหลด Master Data + เปิด Edge App</p>
+            </div>
+
+            <div class="bg-slate-900 border border-emerald-500/40 rounded-xl p-4 text-center">
+              <div class="w-8 h-8 mx-auto rounded-full bg-emerald-500 text-slate-950 font-bold text-xs flex items-center justify-center mb-2">3</div>
+              <div class="text-xs font-bold text-emerald-400">Pre-flight & Hunt</div>
+              <p class="text-[11px] text-slate-400 mt-1">ยิง 9 พอร์ต + แกะ Ghost-DNS ด้วย NetBIOS 137</p>
+            </div>
+
+            <div class="bg-slate-900 border border-emerald-500/40 rounded-xl p-4 text-center">
+              <div class="w-8 h-8 mx-auto rounded-full bg-emerald-500 text-slate-950 font-bold text-xs flex items-center justify-center mb-2">4</div>
+              <div class="text-xs font-bold text-emerald-400">5-Stage Rescue</div>
+              <p class="text-[11px] text-slate-400 mt-1">WinRM &rarr; DCOM &rarr; Remoting &rarr; Remote Reg &rarr; AD</p>
+            </div>
+
+            <div class="bg-slate-900 border border-purple-500/40 rounded-xl p-4 text-center">
+              <div class="w-8 h-8 mx-auto rounded-full bg-purple-500 text-slate-950 font-bold text-xs flex items-center justify-center mb-2">5</div>
+              <div class="text-xs font-bold text-purple-400">Sync & Render</div>
+              <p class="text-[11px] text-slate-400 mt-1">บันทึก Master CSVs + สตรีมข้อมูลขึ้นตาราง Dashboard</p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB: LAYER 1 (Native C# Host) -->
+    <!-- ========================================== -->
+    <section id="tab-layer1" class="tab-content hidden space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded bg-orange-500/20 text-orange-400 text-xs font-bold border border-orange-500/30">LAYER 1</span>
+            <h2 class="text-xl font-bold text-white">Native C# Host & Power Management Engine</h2>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">ไฟล์หลัก: <code class="text-orange-300">src/host/Program.cs</code> และ <code class="text-orange-300">app.manifest</code></p>
+        </div>
+        <span class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">.NET Framework 4.8 / 4.7.2</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Explanation Cards -->
+        <div class="space-y-4">
+          <div class="glass-card rounded-xl p-4 border-l-4 border-l-orange-500">
+            <h4 class="font-bold text-white text-sm">1. UAC Elevation Guarantee (app.manifest)</h4>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              โปรแกรมถูกบังคับด้วยสิทธิ์ <code class="text-amber-300">&lt;requestedExecutionLevel level="requireAdministrator" /&gt;</code> ป้องกันข้อผิดพลาดด้านสิทธิ์ (Access Denied) เมื่อต้องส่งแพ็กเก็ตดิบ (Raw UDP Socket) ไปยังพอร์ต 137 หรือเรียกคำสั่ง System Power
+            </p>
+          </div>
+
+          <div class="glass-card rounded-xl p-4 border-l-4 border-l-amber-500">
+            <h4 class="font-bold text-white text-sm">2. Win32 Power State Guard (kernel32.dll)</h4>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              ใช้ P/Invoke เรียก Native Win32 API:
+              <code class="block my-2 p-2 rounded bg-slate-900 text-amber-300 text-[11px]">
+                SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED);
+              </code>
+              ทำให้ CPU และ Network Interface Card (NIC) ทำงานต่อเนื่องเต็มประสิทธิภาพ แม้ผู้ใช้จะล็อกหน้าจอคอมพิวเตอร์ทิ้งไว้
+            </p>
+          </div>
+
+          <div class="glass-card rounded-xl p-4 border-l-4 border-l-blue-500">
+            <h4 class="font-bold text-white text-sm">3. Laptop Lid-Close Protection (powercfg)</h4>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              เมื่อเปิดโปรแกรม Host จะส่งคำสั่งสอบถามการตั้งค่าพับจอผ่าน <code class="text-sky-300">powercfg /qh</code> ทั้งโหมด AC และ DC แล้วบันทึกค่าเดิมไว้ที่ <code class="text-slate-400">%LOCALAPPDATA%\FTI_PC_Inventory_Tool\lid_state.json</code> จากนั้นตั้งค่าเป็น <code class="text-emerald-400">0 (Do Nothing)</code> เพื่อให้สามารถพับจอเดินไปมาหรือทิ้งไว้ข้ามคืนได้
+            </p>
+          </div>
+
+          <div class="glass-card rounded-xl p-4 border-l-4 border-l-emerald-500">
+            <h4 class="font-bold text-white text-sm">4. Clean Lifecycle & Process Supervisor</h4>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              ติดตั้ง Handler ดักจับ <code class="text-emerald-300">SetConsoleCtrlHandler</code> และ <code class="text-emerald-300">AppDomain.CurrentDomain.ProcessExit</code> หากโปรแกรมถูกปิดกะทันหัน ระบบจะกู้คืนค่า Lid Action และหยุดกระบวนการลูก (Child Process) ทั้งหมด ป้องกันโปรเซสค้างใน Task Manager
+            </p>
+          </div>
+        </div>
+
+        <!-- Code Snippet Box -->
+        <div class="glass-card rounded-xl p-4 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
+              <span class="text-xs font-mono text-slate-400">Program.cs (Key Implementation)</span>
+              <span class="text-[11px] text-orange-400">P/Invoke Native API</span>
+            </div>
+            <pre class="bg-slate-950 p-3 rounded-lg text-xs text-slate-200 overflow-x-auto leading-5">
+<span class="text-slate-500">// 1. Win32 Flags to keep system alive</span>
+<span class="text-purple-400">[Flags]</span>
+<span class="text-blue-400">public enum</span> <span class="text-emerald-400">EXECUTION_STATE</span> : <span class="text-blue-400">uint</span> {
+    ES_AWAYMODE_REQUIRED = 0x00000040,
+    ES_CONTINUOUS        = 0x80000000,
+    ES_SYSTEM_REQUIRED  = 0x00000001
+}
+
+<span class="text-purple-400">[DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]</span>
+<span class="text-blue-400">public static extern</span> <span class="text-emerald-400">EXECUTION_STATE</span> <span class="text-sky-300">SetThreadExecutionState</span>(<span class="text-emerald-400">EXECUTION_STATE</span> esFlags);
+
+<span class="text-slate-500">// 2. Enforce awake mode during scan</span>
+<span class="text-sky-300">SetThreadExecutionState</span>(
+    <span class="text-emerald-400">EXECUTION_STATE</span>.ES_CONTINUOUS |
+    <span class="text-emerald-400">EXECUTION_STATE</span>.ES_SYSTEM_REQUIRED |
+    <span class="text-emerald-400">EXECUTION_STATE</span>.ES_AWAYMODE_REQUIRED
+);
+
+<span class="text-slate-500">// 3. Restore on exit</span>
+<span class="text-sky-300">SetThreadExecutionState</span>(<span class="text-emerald-400">EXECUTION_STATE</span>.ES_CONTINUOUS);</pre>
+          </div>
+          <div class="mt-4 p-3 rounded-lg bg-orange-950/20 border border-orange-500/20 text-xs text-orange-300 flex items-center gap-2">
+            <span>💡</span>
+            <span>จุดสำคัญ: ไฟล์ Host ทำหน้าที่เป็น Launcher แตกไฟล์ script ที่บรรจุอยู่ภายในออกมาทำงานใน Memory โดยไม่ต้องติดตั้ง .NET Runtime อื่นเพิ่ม</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB: LAYER 2 (REST Backend Server) -->
+    <!-- ========================================== -->
+    <section id="tab-layer2" class="tab-content hidden space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded bg-blue-500/20 text-blue-400 text-xs font-bold border border-blue-500/30">LAYER 2</span>
+            <h2 class="text-xl font-bold text-white">Backend REST Server & Master Data Engine</h2>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">ไฟล์หลัก: <code class="text-blue-300">src/AppServer.ps1</code></p>
+        </div>
+        <span class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">System.Net.HttpListener</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left: API Endpoints Table -->
+        <div class="lg:col-span-2 glass-card rounded-xl p-5 border border-slate-800">
+          <h3 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+            <span>🔌</span> REST API Endpoints Specification
+          </h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-900/80 text-slate-400 border-b border-slate-800">
+                <tr>
+                  <th class="py-2 px-3">Method</th>
+                  <th class="py-2 px-3">Endpoint</th>
+                  <th class="py-2 px-3">หน้าที่และการทำงาน</th>
+                  <th class="py-2 px-3">Response</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/60 font-mono text-slate-300">
+                <tr class="hover:bg-slate-800/30">
+                  <td class="py-2 px-3"><span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px]">GET</span></td>
+                  <td class="py-2 px-3 text-sky-400">/api/status</td>
+                  <td class="py-2 px-3 font-sans">เช็คสถานะการสแกน (Idle, Scanning, Done) และ % ความคืบหน้า</td>
+                  <td class="py-2 px-3 text-slate-400">JSON Object</td>
+                </tr>
+                <tr class="hover:bg-slate-800/30">
+                  <td class="py-2 px-3"><span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px]">GET</span></td>
+                  <td class="py-2 px-3 text-sky-400">/api/inventory</td>
+                  <td class="py-2 px-3 font-sans">ดึงข้อมูลเครื่องที่สแกนเสร็จแล้วทั้งหมดมาแสดงในตาราง</td>
+                  <td class="py-2 px-3 text-slate-400">JSON Array</td>
+                </tr>
+                <tr class="hover:bg-slate-800/30">
+                  <td class="py-2 px-3"><span class="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px]">POST</span></td>
+                  <td class="py-2 px-3 text-sky-400">/api/scan/start</td>
+                  <td class="py-2 px-3 font-sans">ส่ง Targets, Range IP, และ Credentials เพื่อสั่งรัน Core Scanner</td>
+                  <td class="py-2 px-3 text-slate-400">{ status: "started" }</td>
+                </tr>
+                <tr class="hover:bg-slate-800/30">
+                  <td class="py-2 px-3"><span class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 text-[10px]">POST</span></td>
+                  <td class="py-2 px-3 text-sky-400">/api/scan/stop</td>
+                  <td class="py-2 px-3 font-sans">สั่ง Cancel การสแกนทันทีและสั่ง Kill Runspace</td>
+                  <td class="py-2 px-3 text-slate-400">{ status: "stopped" }</td>
+                </tr>
+                <tr class="hover:bg-slate-800/30">
+                  <td class="py-2 px-3"><span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px]">GET</span></td>
+                  <td class="py-2 px-3 text-sky-400">/api/export</td>
+                  <td class="py-2 px-3 font-sans">ดาวน์โหลดผลลัพธ์เป็นไฟล์ Excel หรือ CSV สรุปข้อมูล</td>
+                  <td class="py-2 px-3 text-slate-400">File Download</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Master Data Sync Info -->
+          <div class="mt-5 p-4 rounded-xl bg-slate-900 border border-slate-800">
+            <h4 class="text-xs font-bold text-white mb-2 flex items-center gap-1.5">
+              <span>📂</span> Master Data Engine (Automated Persistence)
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              เมื่อเริ่มต้นเซิร์ฟเวอร์ ระบบจะอ่านข้อมูลประวัติเดิมจากโฟลเดอร์ <code class="text-amber-300">Inventory_Tool_data</code> อัตโนมัติ:
+            </p>
+            <div class="grid grid-cols-2 gap-3 mt-3 text-xs">
+              <div class="p-2.5 rounded bg-slate-950 border border-slate-800">
+                <span class="text-sky-400 font-mono font-semibold">Hardware_Master.csv</span>
+                <p class="text-[11px] text-slate-400 mt-0.5">เก็บสเปกเครื่อง ซีเรียล เมนบอร์ด แรม และการ์ดจอ (214 records)</p>
+              </div>
+              <div class="p-2.5 rounded bg-slate-950 border border-slate-800">
+                <span class="text-purple-400 font-mono font-semibold">Software_Master.csv</span>
+                <p class="text-[11px] text-slate-400 mt-0.5">เก็บซอฟต์แวร์ที่ติดตั้งในเครื่องทุกตัว (7,147 records)</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Background Runspace Info -->
+        <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-4">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span>🧵</span> Runspace Architecture
+          </h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            เพื่อไม่ให้ Web Server ค้างหรือหยุดตอบสนองขณะสแกนเครื่องเป้าหมายหลายร้อยเครื่องพร้อมกัน ระบบใช้ <code class="text-blue-300">[powershell]::Create()</code> ในการสร้าง Background Thread แยกขาดออกจาก Main UI Thread
+          </p>
+          <div class="p-3 bg-slate-950 rounded-lg text-xs space-y-2 border border-slate-800 font-mono">
+            <div class="text-slate-500">// Background Pipeline Worker</div>
+            <div class="text-blue-400">$rs = [runspacefactory]::CreateRunspace()</div>
+            <div class="text-blue-400">$rs.Open()</div>
+            <div class="text-emerald-400">$ps = [powershell]::Create()</div>
+            <div class="text-emerald-400">$ps.Runspace = $rs</div>
+            <div class="text-amber-400">$handle = $ps.BeginInvoke()</div>
+          </div>
+          <div class="p-3 bg-blue-950/20 border border-blue-500/20 rounded-lg text-xs text-blue-300">
+            <strong>Frameless Web App Mode:</strong> เซิร์ฟเวอร์จะสั่งเปิด Edge หรือ Chrome ด้วยสวิตช์ <code class="text-white">--app=http://127.0.0.1:port</code> ทำให้หน้าต่างแสดงผลเป็น Native Desktop App ไร้แถบ URL หรือ Bookmark
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB: LAYER 3 (Core Scanner & Rescue) -->
+    <!-- ========================================== -->
+    <section id="tab-layer3" class="tab-content hidden space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">LAYER 3</span>
+            <h2 class="text-xl font-bold text-white">Scanner Core & 2-Pass Penetration Engine</h2>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">ไฟล์หลัก: <code class="text-emerald-300">src/Get-PCInventory.Core.ps1</code></p>
+        </div>
+        <span class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">Multi-Protocol Penetration</span>
+      </div>
+
+      <!-- 3 Pillars of Core Scanner -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        
+        <!-- Pillar 1: 9 Ports Probe -->
+        <div class="glass-card rounded-xl p-5 border border-emerald-500/30">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm mb-3">01</div>
+          <h3 class="text-sm font-bold text-white">9-Port Pre-flight TCP Probe</h3>
+          <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+            ก่อนเริ่มเชื่อมต่อ WMI/CIM ระบบจะทำการยิงตรวจสอบ 9 พอร์ตสำคัญพร้อมกัน เพื่อจำแนกประเภทอุปกรณ์และเลือกเส้นทางเจาะที่เร็วที่สุด:
+          </p>
+          <div class="mt-3 flex flex-wrap gap-1.5 font-mono text-[11px]">
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-emerald-400">135 (RPC)</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-emerald-400">445 (SMB)</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-emerald-400">5985 (WinRM)</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-emerald-400">5986 (HTTPS)</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400">3389 (RDP)</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400">139 (NetBIOS)</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400">80/443 (Web)</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400">5900 (VNC)</span>
+          </div>
+        </div>
+
+        <!-- Pillar 2: Ghost-DNS Hunter -->
+        <div class="glass-card rounded-xl p-5 border border-amber-500/30">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-sm mb-3">02</div>
+          <h3 class="text-sm font-bold text-white">Ghost-DNS Hunter (UDP 137)</h3>
+          <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+            แก้ปัญหาใหญ่ขององค์กรที่เครื่องเปลี่ยน IP แล้ว DNS Server ยังจำ IP เก่า:
+          </p>
+          <ul class="mt-3 text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+            <li>ยิง NetBIOS Name Query บน Port UDP 137</li>
+            <li>ค้นหาเครื่องเป้าหมายที่แท้จริงจาก MAC/Hostname</li>
+            <li>สั่งเรียก Remote <code class="text-amber-300">ipconfig /registerdns</code> อัตโนมัติเพื่อล้าง Cache ทั้งระบบ</li>
+          </ul>
+        </div>
+
+        <!-- Pillar 3: 5-Stage Rescue Protocol -->
+        <div class="glass-card rounded-xl p-5 border border-sky-500/30">
+          <div class="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-sm mb-3">03</div>
+          <h3 class="text-sm font-bold text-white">5-Stage Rescue Protocol</h3>
+          <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+            กลไก Failover อัตโนมัติ หากช่องทางหลักไม่สำเร็จ จะสลับโหมดถอยร่นทันที:
+          </p>
+          <ol class="mt-3 text-xs text-slate-300 space-y-1 font-mono">
+            <li><span class="text-emerald-400">Stage 1:</span> WinRM (WS-Man 5985)</li>
+            <li><span class="text-sky-400">Stage 2:</span> Direct IP DCOM (NTLM)</li>
+            <li><span class="text-amber-400">Stage 3:</span> PSRemoting Session</li>
+            <li><span class="text-orange-400">Stage 4:</span> Remote Registry (445)</li>
+            <li><span class="text-purple-400">Stage 5:</span> Active Directory FQDN</li>
+          </ol>
+        </div>
+
+      </div>
+
+      <!-- Deep Dive Diagram -->
+      <div class="glass-card rounded-xl p-6 border border-slate-800">
+        <h4 class="text-sm font-bold text-white mb-4">ไดอะแกรมการทำงานของ 2-Pass Penetration</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+            <p>
+              <strong class="text-emerald-400">Pass 1 (Lightweight Discovery):</strong> ใช้เวลาเฉลี่ยเพียง 150ms ต่อเครื่อง เพื่อกรองว่าโฮสต์ใดมีตัวตนอยู่จริง พอร์ตใดเปิดอยู่บ้าง และมีสิทธิ์อนุญาตเข้าถึงระดับใด
+            </p>
+            <p>
+              <strong class="text-sky-400">Pass 2 (Deep Telemetry Extraction):</strong> สำหรับเครื่องที่ Pass 1 ผ่าน จะดึงข้อมูลลึกระดับฮาร์ดแวร์ BIOS, Motherboard Serial, RAM Slots, GPU Bus, BitLocker Key Status, Antivirus Engine และ Software List ทั้งหมด
+            </p>
+            <p class="text-slate-400">
+              กลไกนี้ช่วยลดภาระ Network Traffic ในองค์กรลงได้มากกว่า 70% เมื่อเทียบกับการสแกนตรงๆ แบบดั้งเดิม
+            </p>
+          </div>
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-[11px] font-mono space-y-1 text-slate-300">
+            <div class="text-emerald-400">[PASS 1] Probing 192.168.1.105:135,445,5985...</div>
+            <div class="text-slate-400">&nbsp;&nbsp;&rarr; Port 135: OPEN, Port 5985: CLOSED, Port 445: OPEN</div>
+            <div class="text-amber-400">[GHOST-DNS] Querying UDP:137 for HOST-FIN-09... MATCH!</div>
+            <div class="text-sky-400">[PASS 2] Falling back to Stage 2: Direct DCOM (NTLM)...</div>
+            <div class="text-emerald-300">&nbsp;&nbsp;&rarr; WMI Win32_ComputerSystem: SUCCESS (Dell Inc. OptiPlex 7080)</div>
+            <div class="text-emerald-300">&nbsp;&nbsp;&rarr; WMI Win32_OperatingSystem: SUCCESS (Windows 11 Pro 23H2)</div>
+            <div class="text-purple-300">&nbsp;&nbsp;&rarr; Extracted 42 Installed Applications</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB: LAYER 4 (Web UI & Executive Dashboard) -->
+    <!-- ========================================== -->
+    <section id="tab-layer4" class="tab-content hidden space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded bg-purple-500/20 text-purple-400 text-xs font-bold border border-purple-500/30">LAYER 4</span>
+            <h2 class="text-xl font-bold text-white">Executive Web Dashboard & Interactive Grid</h2>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">ไฟล์หลัก: <code class="text-purple-300">src/web/index.html</code></p>
+        </div>
+        <span class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">Vanilla JS + Modern CSS</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Features List -->
+        <div class="space-y-4">
+          <div class="glass-card rounded-xl p-4 border border-slate-800">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+              <span class="text-purple-400">1.</span> Excel-Grade Drag Column Resizer
+            </h4>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              ผู้ใช้สามารถคลิกลากขอบคอลัมน์เพื่อปรับความกว้างได้อย่างอิสระ หรือ Double Click ที่เส้นขอบเพื่อ Auto-fit ตามความยาวข้อความ ค่าความกว้างทั้งหมดจะถูกบันทึกลงใน <code class="text-purple-300">localStorage</code> ของเบราว์เซอร์อัตโนมัติ
+            </p>
+          </div>
+
+          <div class="glass-card rounded-xl p-4 border border-slate-800">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+              <span class="text-blue-400">2.</span> Executive KPI Cards & Interactive Charts
+            </h4>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              แสดงผลสรุปภาพรวมสำหรับผู้บริหาร: จำนวนเครื่องทั้งหมด, สถานะ Online/Offline, เวอร์ชันระบบปฏิบัติการ (Windows 10/11), กราฟแยกตามประเภท CPU (Intel vs AMD) และกราฟแยกตามหน่วยงาน
+            </p>
+          </div>
+
+          <div class="glass-card rounded-xl p-4 border border-slate-800">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+              <span class="text-amber-400">3.</span> Actionable Watchlist with Click-to-Filter
+            </h4>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              แท็บคัดกรองเครื่องที่มีความเสี่ยงหรือผิดปกติโดยเฉพาะ เช่น เครื่องที่สแกนไม่ผ่าน, แรมเหลือน้อยกว่าเกณฑ์, หรือไม่มี Antivirus เมื่อคลิกการ์ด Watchlist ตารางจะทำการกรองเฉพาะเครื่องกลุ่มนั้นทันที
+            </p>
+          </div>
+
+          <div class="glass-card rounded-xl p-4 border border-slate-800">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+              <span class="text-emerald-400">4.</span> A4 Print Stylesheet
+            </h4>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              รองรับการกด <code class="text-white">Ctrl + P</code> หรือปุ่ม Print เพื่อพิมพ์รายงานลงกระดาษ A4 สไตล์รายงานผู้บริหาร โดยระบบจะซ่อนปุ่มกดและตัดขอบหน้าจอออกอัตโนมัติ
+            </p>
+          </div>
+        </div>
+
+        <!-- UI Preview Mockup -->
+        <div class="glass-card rounded-xl p-5 border border-purple-500/20 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span class="text-xs font-bold text-white">Dashboard Live Preview Layout</span>
+              <div class="flex gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-red-500/80"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
+              </div>
+            </div>
+
+            <!-- KPI Row Mockup -->
+            <div class="grid grid-cols-3 gap-2 my-4">
+              <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 text-center">
+                <div class="text-[10px] text-slate-400">TOTAL DEVICES</div>
+                <div class="text-base font-bold text-white">214</div>
+              </div>
+              <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 text-center">
+                <div class="text-[10px] text-slate-400">ONLINE PASS</div>
+                <div class="text-base font-bold text-emerald-400">209 (97.6%)</div>
+              </div>
+              <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 text-center">
+                <div class="text-[10px] text-slate-400">WATCHLIST</div>
+                <div class="text-base font-bold text-amber-400">5</div>
+              </div>
+            </div>
+
+            <!-- Data Table Mockup -->
+            <div class="bg-slate-950 rounded-lg border border-slate-800 overflow-hidden text-[11px]">
+              <div class="grid grid-cols-4 bg-slate-900/90 p-2 font-semibold text-slate-300 border-b border-slate-800">
+                <div>Hostname</div>
+                <div>IP Address</div>
+                <div>OS</div>
+                <div>RAM</div>
+              </div>
+              <div class="divide-y divide-slate-800/40 font-mono">
+                <div class="grid grid-cols-4 p-2 text-slate-300 hover:bg-slate-800/20">
+                  <span class="text-sky-400">FTI-ACC-01</span>
+                  <span>192.168.1.101</span>
+                  <span>Win 11 Pro</span>
+                  <span>16 GB</span>
+                </div>
+                <div class="grid grid-cols-4 p-2 text-slate-300 hover:bg-slate-800/20">
+                  <span class="text-sky-400">FTI-ENG-04</span>
+                  <span>192.168.1.102</span>
+                  <span>Win 10 Pro</span>
+                  <span>32 GB</span>
+                </div>
+                <div class="grid grid-cols-4 p-2 text-slate-300 hover:bg-slate-800/20">
+                  <span class="text-sky-400">FTI-MKT-07</span>
+                  <span>192.168.1.103</span>
+                  <span>Win 11 Pro</span>
+                  <span>16 GB</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+            <span>✨ Zero External Heavy Frameworks</span>
+            <span class="text-purple-400 font-semibold">Ultra Fast Loading</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB: INTERACTIVE SIMULATOR -->
+    <!-- ========================================== -->
+    <section id="tab-simulator" class="tab-content hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 border border-amber-500/30">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded bg-amber-500/20 text-amber-400 text-xs font-bold border border-amber-500/30">SIMULATOR</span>
+              <h2 class="text-xl font-bold text-white">4-Layer End-to-End Scan Lifecycle Simulator</h2>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">กดปุ่มเพื่อจำลองสถานการณ์การสแกน และสังเกตการตอบสนองของแต่ละเลเยอร์แบบเรียลไทม์</p>
+          </div>
+          <button onclick="startSimulation()" id="sim-btn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 font-bold text-slate-950 text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2">
+            <span>▶️</span> เริ่มการจำลองสแกน (Run Simulation)
+          </button>
+        </div>
+
+        <!-- Simulation Visual Stages -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6" id="sim-cards">
+          
+          <div id="sim-step-1" class="p-4 rounded-xl border border-slate-800 bg-slate-900/60 transition-all">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-orange-400">Layer 1: Host</span>
+              <span class="status-indicator w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+            </div>
+            <div class="text-xs font-semibold text-white">Power & Privilege Guard</div>
+            <p class="text-[11px] text-slate-400 mt-1" id="sim-text-1">รอเริ่มจำลอง...</p>
+          </div>
+
+          <div id="sim-step-2" class="p-4 rounded-xl border border-slate-800 bg-slate-900/60 transition-all">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-blue-400">Layer 2: Server</span>
+              <span class="status-indicator w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+            </div>
+            <div class="text-xs font-semibold text-white">HttpListener & Runspace</div>
+            <p class="text-[11px] text-slate-400 mt-1" id="sim-text-2">รอเริ่มจำลอง...</p>
+          </div>
+
+          <div id="sim-step-3" class="p-4 rounded-xl border border-slate-800 bg-slate-900/60 transition-all">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-emerald-400">Layer 3: Core Scanner</span>
+              <span class="status-indicator w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+            </div>
+            <div class="text-xs font-semibold text-white">Probe & 5-Stage Rescue</div>
+            <p class="text-[11px] text-slate-400 mt-1" id="sim-text-3">รอเริ่มจำลอง...</p>
+          </div>
+
+          <div id="sim-step-4" class="p-4 rounded-xl border border-slate-800 bg-slate-900/60 transition-all">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-purple-400">Layer 4: Web UI</span>
+              <span class="status-indicator w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+            </div>
+            <div class="text-xs font-semibold text-white">Render & Sync Master</div>
+            <p class="text-[11px] text-slate-400 mt-1" id="sim-text-4">รอเริ่มจำลอง...</p>
+          </div>
+
+        </div>
+
+        <!-- Simulation Terminal Log -->
+        <div class="mt-6 bg-slate-950 rounded-xl p-4 border border-slate-800 font-mono text-xs">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-slate-400 text-[11px]">
+            <span>SIMULATION CONSOLE LOG</span>
+            <span id="sim-progress-text">Ready</span>
+          </div>
+          <div id="sim-terminal" class="h-44 overflow-y-auto space-y-1 text-slate-300">
+            <div class="text-slate-500">// กดปุ่ม 'เริ่มการจำลองสแกน' ด้านบน เพื่อดู Log ขั้นตอนการทำงานแบบละเอียด</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="max-w-7xl mx-auto px-6 py-6 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-3">
+    <div>FTI PC Inventory Tool — Enterprise Architectural Reference Guide</div>
+    <div class="flex items-center gap-4 text-slate-400">
+      <span>GitHub Repository: <a href="https://github.com/eco-nsuwan/FTI_PC_Inventory_Tool" target="_blank" class="text-sky-400 hover:underline">eco-nsuwan/FTI_PC_Inventory_Tool</a></span>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script>
+    function switchTab(tabId) {
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('tab-active');
+        btn.classList.add('text-slate-300');
+      });
+
+      // Show target tab
+      const targetContent = document.getElementById('tab-' + tabId);
+      if (targetContent) targetContent.classList.remove('hidden');
+
+      // Active state on button
+      const targetBtn = document.getElementById('nav-' + tabId);
+      if (targetBtn) {
+        targetBtn.classList.add('tab-active');
+        targetBtn.classList.remove('text-slate-300');
+      }
+    }
+
+    let isSimulating = false;
+    async function startSimulation() {
+      if (isSimulating) return;
+      isSimulating = true;
+      const btn = document.getElementById('sim-btn');
+      btn.disabled = true;
+      btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+      const terminal = document.getElementById('sim-terminal');
+      const progressText = document.getElementById('sim-progress-text');
+      terminal.innerHTML = '';
+
+      function log(msg, color = 'text-slate-300') {
+        const line = document.createElement('div');
+        line.className = color;
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        terminal.appendChild(line);
+        terminal.scrollTop = terminal.scrollHeight;
+      }
+
+      function setCardState(step, status, text, color) {
+        const card = document.getElementById(`sim-step-${step}`);
+        const indicator = card.querySelector('.status-indicator');
+        const desc = document.getElementById(`sim-text-${step}`);
+        indicator.className = `status-indicator w-2.5 h-2.5 rounded-full ${color}`;
+        desc.textContent = text;
+        if (status === 'active') {
+          card.classList.add('border-amber-500', 'bg-amber-500/10');
+        } else if (status === 'done') {
+          card.classList.remove('border-amber-500', 'bg-amber-500/10');
+          card.classList.add('border-emerald-500', 'bg-emerald-500/10');
+        }
+      }
+
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+      // Step 1: Layer 1 Host
+      progressText.textContent = 'Stage 1: Host Bootstrapping...';
+      setCardState(1, 'active', 'กำลังขอสิทธิ์ Admin และล็อกระบบพลังงาน...', 'bg-amber-400 animate-pulse');
+      log('[Layer 1 Host] Program.cs: Verified Administrator Token (Elevated)', 'text-orange-400');
+      await sleep(700);
+      log('[Layer 1 Host] Win32 SetThreadExecutionState: ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED', 'text-orange-300');
+      await sleep(600);
+      log('[Layer 1 Host] Laptop Lid-Close Guard: Saved AC/DC lid actions to lid_state.json & set to 0 (Do Nothing)', 'text-orange-300');
+      setCardState(1, 'done', 'สิทธิ์ Admin + Awake Guard เปิดใช้งานสมบูรณ์', 'bg-emerald-400');
+
+      // Step 2: Layer 2 Server
+      progressText.textContent = 'Stage 2: Server & Master Data...';
+      setCardState(2, 'active', 'กำลังเริ่ม HttpListener และโหลด Master CSVs...', 'bg-amber-400 animate-pulse');
+      await sleep(600);
+      log('[Layer 2 Server] HttpListener bound to 127.0.0.1:8080 (Prefix registered)', 'text-blue-400');
+      await sleep(600);
+      log('[Layer 2 Server] Preloading Hardware_Master.csv (214 records) and Software_Master.csv (7,147 records)...', 'text-blue-300');
+      await sleep(500);
+      log('[Layer 2 Server] Spawning background worker runspace [powershell]::Create()...', 'text-blue-300');
+      setCardState(2, 'done', 'REST API พร้อมทำงาน + Runspace Standby', 'bg-emerald-400');
+
+      // Step 3: Layer 3 Core Scanner
+      progressText.textContent = 'Stage 3: 2-Pass Scanning & Penetration...';
+      setCardState(3, 'active', 'กำลังยิง 9 พอร์ต + NetBIOS 137 + 5-Stage Rescue...', 'bg-amber-400 animate-pulse');
+      await sleep(700);
+      log('[Layer 3 Scanner] PASS 1: Probing subnet 192.168.1.0/24 across 9 TCP ports (135,445,5985,5986,3389...)', 'text-emerald-400');
+      await sleep(800);
+      log('[Layer 3 Scanner] Target FTI-PC-088: DNS points to 192.168.1.42 (HOST UNREACHABLE)', 'text-amber-400');
+      await sleep(600);
+      log('[Layer 3 Scanner] Ghost-DNS Hunter: Broadcast UDP 137 -> Resolved true IP: 192.168.1.188!', 'text-amber-300');
+      await sleep(600);
+      log('[Layer 3 Scanner] PASS 2: WinRM Port 5985 closed. Triggering Stage 2: Direct DCOM (NTLM)... CONNECTED!', 'text-emerald-300');
+      await sleep(700);
+      log('[Layer 3 Scanner] Extracted: Intel Core i7-12700, 32GB DDR5, Samsung 980 Pro 1TB, 38 Installed Apps', 'text-emerald-400');
+      setCardState(3, 'done', 'สแกนสำเร็จ 100% ข้อมูลครบถ้วน', 'bg-emerald-400');
+
+      // Step 4: Layer 4 Web UI
+      progressText.textContent = 'Stage 4: Sync & Render...';
+      setCardState(4, 'active', 'กำลังอัปเดต Master CSVs และสตรีมข้อมูลขึ้นตาราง...', 'bg-amber-400 animate-pulse');
+      await sleep(600);
+      log('[Layer 2 Server] Appending new inventory state to Hardware_Master.csv in Inventory_Tool_data', 'text-blue-400');
+      await sleep(500);
+      log('[Layer 4 Web UI] SSE / Realtime Sync: Updated Hardware Grid with column widths preserved', 'text-purple-400');
+      await sleep(500);
+      log('[Layer 4 Web UI] KPI updated: Total Devices = 215, Online Pass = 210, Watchlist = 5', 'text-purple-300');
+      setCardState(4, 'done', 'Dashboard แสดงข้อมูลเรียลไทม์เรียบร้อย', 'bg-emerald-400');
+
+      progressText.textContent = 'Completed (Ready)';
+      log('--- จบกระบวนการจำลองสแกน 4 เลเยอร์สมบูรณ์แบบ ---', 'text-emerald-400 font-bold');
+
+      btn.disabled = false;
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      isSimulating = false;
+    }
+  </script>
+</body>
+</html>
