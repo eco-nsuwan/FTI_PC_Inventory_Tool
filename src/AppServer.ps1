@@ -1,4 +1,4 @@
-﻿param(
+param(
     [switch]$Silent,
     [switch]$ScheduledRun,
     [string]$OutDir = 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data',
@@ -103,6 +103,7 @@ try {
 } catch {}
 
 # --- Laptop Lid-Close Awake Guard with Automatic Restore ---
+$localApp = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::LocalApplicationData)
 $script:lidBackupFile = Join-Path $localApp 'FTI_PC_Inventory_Tool\lid_power_backup.json'
 
 function Enable-LidCloseAwakeGuard {
@@ -1243,7 +1244,12 @@ while ($running) {
                 if ($script:scanStartTime) {
                     $endTime = if ($script:scanEndTime) { $script:scanEndTime } else { [System.DateTime]::Now }
                     $ts = $endTime - $script:scanStartTime
-                    $elapsedStr = $ts.ToString('mm\:ss')
+                    $totalHours = [int][math]::Floor($ts.TotalHours)
+                    if ($totalHours -gt 0) {
+                        $elapsedStr = "{0:D2}:{1:D2}:{2:D2}" -f $totalHours, $ts.Minutes, $ts.Seconds
+                    } else {
+                        $elapsedStr = "{0:D2}:{1:D2}" -f $ts.Minutes, $ts.Seconds
+                    }
                 }
 
                 $newLogs = @()
@@ -1372,6 +1378,20 @@ while ($running) {
                     $m = $script:swScannedPCs | Where-Object { $_.PCName -ieq $targetPC } | Select-Object -First 1
                     if ($m -and $m.SoftwareList) {
                         $swList = @($m.SoftwareList -split ';\s*' | Where-Object { $_ })
+                    } else {
+                        # Fallback: check Master Software file
+                        $outDirParam = if ($script:lastOutDir) { $script:lastOutDir } else { 'C:\Users\ax_admin.FUNCTION59\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data' }
+                        $swMasterPath = Join-Path $outDirParam 'Software_Master.csv'
+                        if (Test-Path -LiteralPath $swMasterPath) {
+                            try {
+                                $matchedRows = @(Import-Csv -LiteralPath $swMasterPath -Encoding UTF8 | Where-Object { $_.PCName -ieq $targetPC })
+                                foreach ($row in $matchedRows) {
+                                    $itemStr = $row.Name
+                                    if ($row.Version) { $itemStr += " ($($row.Version))" }
+                                    if ($itemStr) { $swList += $itemStr }
+                                }
+                            } catch {}
+                        }
                     }
                 }
                 $json = @{ pcName = $targetPC; software = $swList } | ConvertTo-Json
@@ -1459,7 +1479,7 @@ while ($running) {
                 elseif ($action -eq 'registerWinTask') {
                     $mode = if ($params.mode) { [string]$params.mode } else { 'daily' }
                     $taskTime = if ($params.time) { [string]$params.time } else { '02:00' }
-                    $intervalMins = if ($params.intervalMinutes) { [int]$params.intervalMinutes } else { 15 }
+                    $intervalMins = if ($params.intervalMinutes) { [int]$params.intervalMinutes } elseif ($params.intervalHours) { [int]([double]$params.intervalHours * 60) } else { 60 }
                     if ($intervalMins -lt 1) { $intervalMins = 1 }
 
                     $exe = Get-FtiExecutablePath
@@ -1478,7 +1498,8 @@ while ($running) {
                         if ($mode -eq 'interval') {
                             $startStr = (Get-Date).ToString("HH:mm")
                             $trigger = New-ScheduledTaskTrigger -Once -At $startStr -RepetitionInterval (New-TimeSpan -Minutes $intervalMins) -RepetitionDuration (New-TimeSpan -Days 3650)
-                            $msg = "Registered Windows Task 'FTI_PC_Inventory_AutoScan' repeating every $intervalMins minute(s). (Executable: $exe)"
+                            $intervalLabel = if ($intervalMins -ge 60 -and ($intervalMins % 60 -eq 0)) { "$([int]($intervalMins / 60)) hour(s)" } else { "$intervalMins minute(s)" }
+                            $msg = "Registered Windows Task 'FTI_PC_Inventory_AutoScan' repeating every $intervalLabel. (Executable: $exe)"
                         } else {
                             $trigger = New-ScheduledTaskTrigger -Daily -At $taskTime
                             $msg = "Registered Windows Task 'FTI_PC_Inventory_AutoScan' at $taskTime daily. (Executable: $exe)"
@@ -1568,25 +1589,42 @@ while ($running) {
 
                         foreach ($r in $hwRows) {
                             $machines.Add(@{
-                                PCName      = $r.PCName
-                                Status      = $r.Status
-                                Method      = if ($r.Method) { $r.Method } else { '-' }
-                                IP          = $r.IP
-                                OS          = $r.OS
-                                User        = $r.User
-                                CPU         = $r.CPU
-                                RAM_GB      = $r.RAM_GB
-                                Disk_C_Free = $r.Disk_C_Free
-                                Last_Boot   = $r.Last_Boot
-                                Scan_Count  = $r.Scan_Count
-                                First_Seen  = $r.First_Seen
-                                Last_Scan   = $r.Last_Scan
+                                PCName         = $r.PCName
+                                Status         = $r.Status
+                                Method         = if ($r.Method) { $r.Method } else { '-' }
+                                Status_Detail  = if ($r.Status_Detail) { $r.Status_Detail } else { '-' }
+                                Fail_Count     = if ($r.Fail_Count) { $r.Fail_Count } else { '0' }
+                                Win_License    = if ($r.Win_License) { $r.Win_License } else { '-' }
+                                Office_License = if ($r.Office_License) { $r.Office_License } else { '-' }
+                                Office_Detail  = if ($r.Office_Detail) { $r.Office_Detail } else { '-' }
+                                IP             = $r.IP
+                                MAC            = if ($r.MAC) { $r.MAC } else { '-' }
+                                OS             = $r.OS
+                                OSBuild        = if ($r.OSBuild) { $r.OSBuild } else { '-' }
+                                User           = $r.User
+                                CPU            = $r.CPU
+                                Cores          = if ($r.Cores) { $r.Cores } else { '-' }
+                                RAM_GB         = $r.RAM_GB
+                                Disk_C_Free    = $r.Disk_C_Free
+                                Disks          = if ($r.Disks) { $r.Disks } else { '-' }
+                                GPU            = if ($r.GPU) { $r.GPU } else { '-' }
+                                Maker          = if ($r.Maker) { $r.Maker } else { '-' }
+                                Model          = if ($r.Model) { $r.Model } else { '-' }
+                                Serial         = if ($r.Serial) { $r.Serial } else { '-' }
+                                Last_Boot      = $r.Last_Boot
+                                Uptime         = if ($r.Uptime) { $r.Uptime } else { '-' }
+                                AD_OU          = if ($r.AD_OU) { $r.AD_OU } else { '-' }
+                                AD_LastLogon   = if ($r.AD_LastLogon) { $r.AD_LastLogon } else { '-' }
+                                Scan_Count     = $r.Scan_Count
+                                First_Seen     = $r.First_Seen
+                                Last_Scan      = $r.Last_Scan
                             })
                         }
                     } catch {}
                 }
 
                 $swInfo = @{ exists = $false; size = 0; lastModified = '-'; totalRecords = 0; uniqueApps = 0 }
+                $swMachines = [System.Collections.Generic.List[object]]::new()
                 if ($swExists) {
                     try {
                         $item = Get-Item -LiteralPath $swMasterPath
@@ -1595,6 +1633,23 @@ while ($running) {
                         $swInfo.lastModified = $item.LastWriteTime.ToString('yyyy-MM-dd HH:mm')
                         $swRows = @(Import-Csv -LiteralPath $swMasterPath -Encoding UTF8)
                         $swInfo.totalRecords = $swRows.Count
+
+                        # Aggregate into per-PC software summary list for the Software Scan tab
+                        $swGrouped = $swRows | Group-Object PCName
+                        foreach ($g in $swGrouped) {
+                            $apps = @($g.Group)
+                            $keyApps = @($apps | Where-Object { $_.Name -match 'Office|Microsoft 365|Google Chrome|Firefox|Adobe|7-Zip|CrowdStrike|Antivirus|Defender|AnyDesk|TeamViewer' } | Select-Object -ExpandProperty Name -First 4)
+                            $topPreview = if ($keyApps.Count -gt 0) { $keyApps -join ', ' } else { (($apps | Select-Object -First 3 | ForEach-Object { $_.Name }) -join ', ') }
+                            $allList = ($apps | ForEach-Object { if ($_.Version) { "$($_.Name) ($($_.Version))" } else { $_.Name } }) -join '; '
+                            $swMachines.Add(@{
+                                PCName        = $g.Name
+                                Status        = 'OK'
+                                Method        = 'Master DB'
+                                SoftwareCount = $apps.Count
+                                KeySoftware   = $topPreview
+                                SoftwareList  = $allList
+                            })
+                        }
                     } catch {}
                 }
                 if ($swSumExists) {
@@ -1620,11 +1675,12 @@ while ($running) {
                 } catch {}
 
                 $masterResp = @{
-                    outDir    = $outDirParam
-                    hwMaster  = $hwInfo
-                    swMaster  = $swInfo
-                    machines  = $machines
-                    backups   = $backups
+                    outDir     = $outDirParam
+                    hwMaster   = $hwInfo
+                    swMaster   = $swInfo
+                    machines   = $machines
+                    swMachines = $swMachines
+                    backups    = $backups
                 }
 
                 $json = $masterResp | ConvertTo-Json -Depth 5 -Compress
