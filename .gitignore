@@ -1,6 +1,7 @@
 # Build artifacts and binaries
 dist/*.exe
 dist/FTI_PC_Inventory*.exe
+dist/*.txt
 build/*.exe
 build/merged.ps1
 *.ico.tmp
