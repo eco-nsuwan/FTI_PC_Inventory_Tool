@@ -12,9 +12,9 @@ using System.Text;
 [assembly: AssemblyCopyright("Copyright © Function International 2026")]
 [assembly: AssemblyTrademark("FTI")]
 [assembly: AssemblyCulture("")]
-[assembly: AssemblyVersion("2026.11.13.2")]
-[assembly: AssemblyFileVersion("2026.11.13.2")]
-[assembly: AssemblyInformationalVersion("v2026.11.13.2 Enterprise (2026-11-13 15:47:11)")]
+[assembly: AssemblyVersion("2026.11.13.3")]
+[assembly: AssemblyFileVersion("2026.11.13.3")]
+[assembly: AssemblyInformationalVersion("v2026.11.13.3 Enterprise (2026-11-13 16:28:00)")]
 
 namespace FTI.PCInventory
 {
@@ -39,9 +39,25 @@ namespace FTI.PCInventory
                 {
                     if (resStream != null)
                     {
-                        using (FileStream fs = new FileStream(scriptPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                        try
                         {
-                            resStream.CopyTo(fs);
+                            using (FileStream fs = new FileStream(scriptPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+                            {
+                                resStream.CopyTo(fs);
+                            }
+                        }
+                        catch (IOException)
+                        {
+                            // If scriptPath is currently locked by another running instance (e.g. GUI running while scheduler triggers),
+                            // check if file exists and is non-empty. If so, reuse it safely.
+                            if (!File.Exists(scriptPath) || new FileInfo(scriptPath).Length == 0)
+                            {
+                                scriptPath = Path.Combine(appDir, string.Format("app_engine_{0}.ps1", Process.GetCurrentProcess().Id));
+                                using (FileStream fs = new FileStream(scriptPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+                                {
+                                    resStream.CopyTo(fs);
+                                }
+                            }
                         }
                     }
                     else if (!File.Exists(scriptPath))
@@ -134,6 +150,7 @@ namespace FTI.PCInventory
                         {
                             proc.WaitForExit();
                             RestoreLidActionFallback(appDir);
+                            CleanupTempScript(scriptPath);
                             return proc.ExitCode;
                         }
                         else
@@ -141,12 +158,14 @@ namespace FTI.PCInventory
                             // In interactive mode, wait for server process so launcher stays clean
                             proc.WaitForExit();
                             RestoreLidActionFallback(appDir);
+                            CleanupTempScript(scriptPath);
                             return proc.ExitCode;
                         }
                     }
                 }
 
                 RestoreLidActionFallback(appDir);
+                CleanupTempScript(scriptPath);
                 return 0;
             }
             catch (Exception ex)
@@ -163,6 +182,18 @@ namespace FTI.PCInventory
 
                 return 1;
             }
+        }
+
+        private static void CleanupTempScript(string path)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(path) && path.Contains("app_engine_") && File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+            catch { }
         }
 
         private static void RestoreLidActionFallback(string appDir)
