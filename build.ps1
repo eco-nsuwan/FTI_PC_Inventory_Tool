@@ -258,7 +258,7 @@ $htmlB64     = [System.Convert]::ToBase64String($htmlBytes)
 $serverCode  = [System.IO.File]::ReadAllText($srcServer, [System.Text.Encoding]::UTF8)
 
 # Extract param block from $serverCode to ensure it is the very first statement
-$paramBlock = "param([switch]`$Silent, [switch]`$ScheduledRun, [string]`$OutDir = 'C:\Users\nopmunin\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data')"
+$paramBlock = "param([switch]`$Silent, [switch]`$ScheduledRun, [string]`$OutDir = 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data')"
 $restOfServer = $serverCode
 if ($serverCode -match '(?ms)^\s*param\s*\((.*?)\)\s*(.*)$') {
     $paramBlock = "param($($matches[1]))"

@@ -406,7 +406,7 @@ $lblOutDir.BackColor = [System.Drawing.Color]::White
 $card3.Controls.Add($lblOutDir)
 
 $txtOutDir = New-Object System.Windows.Forms.TextBox
-$txtOutDir.Text = 'C:\Users\nopmunin\Desktop\FTI_INTERN_PROGRAMS\Inventory_Tool_data'
+$txtOutDir.Text = 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data'
 $txtOutDir.Location = New-Object System.Drawing.Point(20, 64)
 $txtOutDir.Size = New-Object System.Drawing.Size(345, 24)
 $card3.Controls.Add($txtOutDir)
