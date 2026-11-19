@@ -13,7 +13,7 @@ param(
     [string]$ComputerListFile,
     [int]$DaysActive = 30,           # only PCs that logged on to the domain within N days (AD mode, 0 = all)
     [int]$Throttle = 20,
-    [string]$OutDir = 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data',
+    [string]$OutDir = '',
     [switch]$FallbackToAD,           # If ComputerListFile is empty, fallback to AD if set
     [switch]$ScanLocalhost,          # Scan current machine directly
     [switch]$MasterMode = $true,     # Sync with Master Database (Hardware_Master.csv)
@@ -45,6 +45,39 @@ $script:ParsedProbePorts = @(
 )
 if (-not $script:ParsedProbePorts -or $script:ParsedProbePorts.Count -eq 0) {
     $script:ParsedProbePorts = @(135, 445, 5985, 5986, 3389, 139, 80, 443, 5900)
+}
+if ($script:ParsedProbePorts.Count -gt 64) {
+    $script:ParsedProbePorts = @($script:ParsedProbePorts | Select-Object -First 64)
+}
+
+if ([string]::IsNullOrWhiteSpace($OutDir)) {
+    if ($env:FTI_INVENTORY_DATA) {
+        $OutDir = $env:FTI_INVENTORY_DATA
+    } else {
+        $baseCandidates = @()
+        if ($env:FTI_HOST_EXE) {
+            try {
+                $exeDir = Split-Path -Parent $env:FTI_HOST_EXE
+                $parent1 = Split-Path -Parent $exeDir
+                $parent2 = Split-Path -Parent $parent1
+                if ($parent2) { $baseCandidates += (Join-Path $parent2 'Inventory_Tool_data') }
+                if ($parent1) { $baseCandidates += (Join-Path $parent1 'Inventory_Tool_data') }
+            } catch {}
+        }
+        if ($PSScriptRoot) {
+            try {
+                $p1 = Split-Path -Parent $PSScriptRoot
+                $p2 = Split-Path -Parent $p1
+                if ($p2) { $baseCandidates += (Join-Path $p2 'Inventory_Tool_data') }
+            } catch {}
+        }
+        $resolvedDefault = $baseCandidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
+        if ($resolvedDefault) {
+            $OutDir = $resolvedDefault
+        } else {
+            $OutDir = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'FTI_PC_Inventory_Tool\Data'
+        }
+    }
 }
 
 New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
@@ -117,7 +150,17 @@ function Save-CsvAtomic {
     $acquired = $false
     $tmp = "$Path.tmp.$PID.$([System.Guid]::NewGuid().ToString('N').Substring(0, 8))"
     try {
-        $mtx = New-Object System.Threading.Mutex($false, 'Local\FTI_PC_Inventory_MasterCsvMutex')
+        try {
+            $mSec = New-Object System.Security.AccessControl.MutexSecurity
+            $adminSid = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid, $null)
+            $sysSid   = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::LocalSystemSid, $null)
+            $mSec.AddAccessRule((New-Object System.Security.AccessControl.MutexAccessRule($adminSid, [System.Security.AccessControl.MutexRights]::FullControl, [System.Security.AccessControl.AccessControlType]::Allow)))
+            $mSec.AddAccessRule((New-Object System.Security.AccessControl.MutexAccessRule($sysSid, [System.Security.AccessControl.MutexRights]::FullControl, [System.Security.AccessControl.AccessControlType]::Allow)))
+            $createdNew = $false
+            $mtx = New-Object System.Threading.Mutex($false, 'Global\FTI_PC_Inventory_MasterCsvMutex', [ref]$createdNew, $mSec)
+        } catch [System.UnauthorizedAccessException] {
+            $mtx = New-Object System.Threading.Mutex($false, 'Local\FTI_PC_Inventory_MasterCsvMutex')
+        }
         try {
             $acquired = $mtx.WaitOne(15000)
         } catch [System.Threading.AbandonedMutexException] {
@@ -352,39 +395,42 @@ function Test-PCConnection([string]$computer) {
         return @{ Success = $false; Detail = "ICMP ping timed out ($probes probes @ " + $timeoutMs + "ms)" }
     }
 
-    # Helper: Parallel TCP Multi-Port Probe
+    # Helper: Parallel TCP Multi-Port Probe (loops WaitAny so fast TCP RST does not abort slower open ports)
     $testTcpParallel = {
         $sockets = @()
-        $handles = @()
-        $arMap = @{}
+        $pending = [System.Collections.Generic.List[hashtable]]::new()
+        $cappedPorts = @($ports | Select-Object -First 64)
 
-        foreach ($port in $ports) {
+        foreach ($port in $cappedPorts) {
             try {
                 $tcp = New-Object System.Net.Sockets.TcpClient
                 $ar = $tcp.BeginConnect($computer, $port, $null, $null)
                 $sockets += $tcp
-                $handles += $ar.AsyncWaitHandle
-                $arMap[$port] = @{ Tcp = $tcp; Ar = $ar }
+                $pending.Add(@{ Port = $port; Tcp = $tcp; Ar = $ar; Handle = $ar.AsyncWaitHandle })
             } catch { }
         }
 
         $connectedPort = $null
-        if ($handles.Count -gt 0) {
-            [System.Threading.WaitHandle]::WaitAny($handles, $timeoutMs) | Out-Null
-            foreach ($entry in $arMap.GetEnumerator()) {
-                $pNum = $entry.Key
-                $tObj = $entry.Value.Tcp
-                $aObj = $entry.Value.Ar
-                try {
-                    if ($tObj.Connected -or ($aObj.IsCompleted -and -not $tObj.Client.Poll(0, [System.Net.Sockets.SelectMode]::SelectError))) {
-                        $tObj.EndConnect($aObj)
-                        if ($tObj.Connected) {
-                            $connectedPort = $pNum
-                            break
-                        }
-                    }
-                } catch { }
+        $swTcp = [System.Diagnostics.Stopwatch]::StartNew()
+        while ($pending.Count -gt 0 -and -not $connectedPort) {
+            $remMs = [int]($timeoutMs - $swTcp.ElapsedMilliseconds)
+            if ($remMs -le 0) { break }
+            $waitHandles = @($pending | ForEach-Object { $_.Handle })
+            $idx = [System.Threading.WaitHandle]::WaitAny($waitHandles, $remMs)
+            if ($idx -eq [System.Threading.WaitHandle]::WaitTimeout -or $idx -lt 0 -or $idx -ge $pending.Count) {
+                break
             }
+            $item = $pending[$idx]
+            $pending.RemoveAt($idx)
+            try {
+                if ($item.Tcp.Connected -or ($item.Ar.IsCompleted -and -not $item.Tcp.Client.Poll(0, [System.Net.Sockets.SelectMode]::SelectError))) {
+                    $item.Tcp.EndConnect($item.Ar)
+                    if ($item.Tcp.Connected) {
+                        $connectedPort = $item.Port
+                        break
+                    }
+                }
+            } catch { }
         }
 
         foreach ($s in $sockets) {
@@ -394,7 +440,7 @@ function Test-PCConnection([string]$computer) {
         if ($connectedPort) {
             return @{ Success = $true; Port = $connectedPort; Detail = "TCP port $connectedPort open" }
         }
-        return @{ Success = $false; Port = $null; Detail = "TCP ports ($($ports -join ',')) closed/timed out" }
+        return @{ Success = $false; Port = $null; Detail = "TCP ports ($($cappedPorts -join ',')) closed/timed out" }
     }
 
     # Helper: ARP Cache check (for local subnet LAN/VLAN)
@@ -1343,18 +1389,28 @@ function Get-HardwareFromRemoteRegistry {
         } else {
             $foundOff = $null
             foreach ($uPath in @('SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall', 'SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall')) {
-                $uKey = $reg.OpenSubKey($uPath)
-                if ($uKey) {
-                    foreach ($subName in $uKey.GetSubKeyNames()) {
-                        $sub = $uKey.OpenSubKey($subName)
-                        if ($sub) {
-                            $disp = [string]$sub.GetValue('DisplayName')
-                            if ($disp -match '(?i)^(Microsoft 365|Microsoft Office (Professional|Standard|Home|Business|Enterprise|LTSC|365|20\d{2}))' -and $disp -notmatch '(?i)MUI|Proof|Shared|Component|Viewer|Redistributable|Visio|Project|Connector') {
-                                $foundOff = $disp
-                                break
+                $uKey = $null
+                try {
+                    $uKey = $reg.OpenSubKey($uPath)
+                    if ($uKey) {
+                        foreach ($subName in $uKey.GetSubKeyNames()) {
+                            $sub = $null
+                            try {
+                                $sub = $uKey.OpenSubKey($subName)
+                                if ($sub) {
+                                    $disp = [string]$sub.GetValue('DisplayName')
+                                    if ($disp -match '(?i)^(Microsoft 365|Microsoft Office (Professional|Standard|Home|Business|Enterprise|LTSC|365|20\d{2}))' -and $disp -notmatch '(?i)MUI|Proof|Shared|Component|Viewer|Redistributable|Visio|Project|Connector') {
+                                        $foundOff = $disp
+                                        break
+                                    }
+                                }
+                            } finally {
+                                if ($sub) { try { $sub.Close(); $sub.Dispose() } catch {} }
                             }
                         }
                     }
+                } finally {
+                    if ($uKey) { try { $uKey.Close(); $uKey.Dispose() } catch {} }
                 }
                 if ($foundOff) { break }
             }
@@ -1538,6 +1594,7 @@ function Invoke-DeepPenetrationScan {
 
     # Stage 1: WinRM (WSMAN Port 5985)
     foreach ($cand in $orderedTargets) {
+        $s = $null
         try {
             $opt = New-CimSessionOption -Protocol Wsman
             $s = New-CimSession -ComputerName $cand -SessionOption $opt -OperationTimeoutSec 10 -ErrorAction Stop
@@ -1563,20 +1620,21 @@ function Invoke-DeepPenetrationScan {
                 $rec = Get-HardwareFromCimSession -s $s -pcTarget $cand -isLocal $false `
                     -prevWinLicense $prevWinLicense -prevOfficeLicense $prevOfficeLicense -prevOfficeDetail $prevOfficeDetail `
                     -ad $ad -methodName '⚡ WinRM' -statusDetail $statusMsg
-                Remove-CimSession $s -ErrorAction SilentlyContinue
                 if ($rec) {
                     $script:rescuedEndpoints[$pc.ToUpper()] = $cand
                     return $rec
                 }
-            } else {
-                Remove-CimSession $s -ErrorAction SilentlyContinue
             }
         } catch { }
+        finally {
+            if ($s) { Remove-CimSession $s -ErrorAction SilentlyContinue }
+        }
     }
 
     # Stage 2: Direct IPv4 via Legacy WMI / DCOM (Forces NTLM over Kerberos)
     $ipCandidates = @($orderedTargets | Where-Object { $_ -match '^\d+\.\d+\.\d+\.\d+$' })
     foreach ($ipCand in $ipCandidates) {
+        $s = $null
         try {
             $opt = New-CimSessionOption -Protocol Dcom
             $s = New-CimSession -ComputerName $ipCand -SessionOption $opt -OperationTimeoutSec 12 -ErrorAction Stop
@@ -1600,15 +1658,15 @@ function Invoke-DeepPenetrationScan {
                 $rec = Get-HardwareFromCimSession -s $s -pcTarget $ipCand -isLocal $false `
                     -prevWinLicense $prevWinLicense -prevOfficeLicense $prevOfficeLicense -prevOfficeDetail $prevOfficeDetail `
                     -ad $ad -methodName '⚡ IP-WMI' -statusDetail $statusMsg
-                Remove-CimSession $s -ErrorAction SilentlyContinue
                 if ($rec) {
                     $script:rescuedEndpoints[$pc.ToUpper()] = $ipCand
                     return $rec
                 }
-            } else {
-                Remove-CimSession $s -ErrorAction SilentlyContinue
             }
         } catch { }
+        finally {
+            if ($s) { Remove-CimSession $s -ErrorAction SilentlyContinue }
+        }
     }
 
     # Stage 3: PowerShell Remoting (Invoke-Command)
@@ -1633,6 +1691,7 @@ function Invoke-DeepPenetrationScan {
 
     # Stage 5: Extended Timeout DCOM on AD FQDN
     if ($ad.AD_DNSHostName) {
+        $s = $null
         try {
             $opt = New-CimSessionOption -Protocol Dcom
             $s = New-CimSession -ComputerName $ad.AD_DNSHostName -SessionOption $opt -OperationTimeoutSec 20 -ErrorAction Stop
@@ -1641,15 +1700,15 @@ function Invoke-DeepPenetrationScan {
                 $rec = Get-HardwareFromCimSession -s $s -pcTarget $ad.AD_DNSHostName -isLocal $false `
                     -prevWinLicense $prevWinLicense -prevOfficeLicense $prevOfficeLicense -prevOfficeDetail $prevOfficeDetail `
                     -ad $ad -methodName '⚡ FQDN-DCOM' -statusDetail "Rescued via Extended DCOM on FQDN ($($ad.AD_DNSHostName))"
-                Remove-CimSession $s -ErrorAction SilentlyContinue
                 if ($rec) {
                     $script:rescuedEndpoints[$pc.ToUpper()] = $ad.AD_DNSHostName
                     return $rec
                 }
-            } else {
-                Remove-CimSession $s -ErrorAction SilentlyContinue
             }
         } catch { }
+        finally {
+            if ($s) { Remove-CimSession $s -ErrorAction SilentlyContinue }
+        }
     }
 
     # Diagnostic Stage 6: VNC Port 5900 Reachability Detection
@@ -1690,12 +1749,18 @@ function Invoke-DeepPenetrationScan {
             Fail_Count     = 0
             IP             = if ($ip) { $ip } else { if ($oldRecord -and $oldRecord.IP) { $oldRecord.IP } else { '' } }
             MAC            = if ($mac) { $mac } else { if ($oldRecord -and $oldRecord.MAC) { $oldRecord.MAC } else { '' } }
+            User           = if ($oldRecord -and $oldRecord.User) { $oldRecord.User } else { '-' }
             Maker          = if ($oldRecord -and $oldRecord.Maker) { $oldRecord.Maker } else { '-' }
             Model          = if ($oldRecord -and $oldRecord.Model) { $oldRecord.Model } else { '-' }
             Serial         = if ($oldRecord -and $oldRecord.Serial) { $oldRecord.Serial } else { '-' }
             CPU            = if ($oldRecord -and $oldRecord.CPU) { $oldRecord.CPU } else { '-' }
+            Cores          = if ($oldRecord -and $oldRecord.Cores) { $oldRecord.Cores } else { '-' }
             RAM_GB         = if ($oldRecord -and $oldRecord.RAM_GB) { $oldRecord.RAM_GB } else { '-' }
-            Disk_Info      = if ($oldRecord -and $oldRecord.Disk_Info) { $oldRecord.Disk_Info } else { '-' }
+            Disk_C_Free    = if ($oldRecord -and $oldRecord.Disk_C_Free) { $oldRecord.Disk_C_Free } else { '-' }
+            Disks          = if ($oldRecord -and $oldRecord.Disks) { $oldRecord.Disks } else { '-' }
+            GPU            = if ($oldRecord -and $oldRecord.GPU) { $oldRecord.GPU } else { '-' }
+            OS             = if ($oldRecord -and $oldRecord.OS) { $oldRecord.OS } else { '-' }
+            OSBuild        = if ($oldRecord -and $oldRecord.OSBuild) { $oldRecord.OSBuild } else { '-' }
             Win_License    = $prevWinLicense
             Office_License = $prevOfficeLicense
             Office_Detail  = $prevOfficeDetail
@@ -1910,12 +1975,13 @@ if (-not $SkipHardware) {
             $ParsedProbePorts,
             [bool]$ScanDeadHosts,
             [bool]$SkipBroadcast,
-            [bool]$SkipServers
+            [bool]$SkipServers,
+            $SharedSubnetMap
         )
         $script:ParsedProbePorts = $ParsedProbePorts
         $script:lastConnInfo = $null
         $script:rescuedEndpoints = @{}
-        $script:subnetHostMap = @{}
+        $script:subnetHostMap = if ($SharedSubnetMap) { $SharedSubnetMap } else { [System.Collections.Concurrent.ConcurrentDictionary[string, object]]::new() }
         $adCache = @{}
 
         $sPc = $stub.PC
@@ -2183,6 +2249,7 @@ if (-not $SkipHardware) {
                 return $anyDeepDone
             }
 
+            $sharedSubnetMap = [System.Collections.Concurrent.ConcurrentDictionary[string, object]]::new()
             $sIdx = 0
             foreach ($stub in $stubbornQueue) {
                 $sIdx++
@@ -2213,7 +2280,8 @@ if (-not $SkipHardware) {
                     AddArgument($script:ParsedProbePorts).
                     AddArgument([bool]$ScanDeadHosts).
                     AddArgument([bool]$SkipBroadcast).
-                    AddArgument([bool]$SkipServers)
+                    AddArgument([bool]$SkipServers).
+                    AddArgument($sharedSubnetMap)
 
                 $pass2Jobs.Add(@{
                     PC     = $sPc
@@ -2252,7 +2320,7 @@ if (-not $SkipHardware) {
     if ($MasterMode) {
         foreach ($r in $hw) {
             $key = $r.PCName.ToUpper()
-            if ($r.Status -eq 'OK') {
+            if ($r.Status -in @('OK', 'Online')) {
                 if ($masterDict.Contains($key)) {
                     $old = $masterDict[$key]
                     $prevCount = 0
@@ -2766,8 +2834,9 @@ function t(o){document.querySelectorAll('details').forEach(function(d){d.open=o;
         }
 
         # 2. For each successfully scanned PC in this run (OK*), update its software list in Master
+        # Always use unfiltered $all so NameFilter never purges other installed software from Software_Master.csv
         $scannedOkPCs = @($status | Where-Object { $_.Status -like 'OK*' } | Select-Object -ExpandProperty PCName -Unique)
-        $newSwGroups = $final | Group-Object PCName
+        $newSwGroups = $all | Group-Object PCName
 
         foreach ($okPC in $scannedOkPCs) {
             $key = $okPC.ToUpper()

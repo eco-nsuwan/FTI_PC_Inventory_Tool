@@ -4648,7 +4648,7 @@
 
               <div class="input-group-row">
 
-                <input type="text" id="txtOutDir" value="C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data" class="input-compact">
+                <input type="text" id="txtOutDir" value="{{FTI_DEFAULT_OUTDIR}}" class="input-compact">
 
                 <button class="btn-browse" id="btnBrowseFolder">Browse...</button>
 
@@ -7295,7 +7295,7 @@
 
       for (const tok of tokens) {
         if (tok.includes('/')) {
-          const [ipStr, prefixStr] = tok.split('/');
+          const parts = tok.split('/'); if (parts.length !== 2) { invalidTokens.push(tok); continue; } const [ipStr, prefixStr] = parts;
           const prefix = Number(prefixStr);
           const baseInt = ipToInt(ipStr);
           if (baseInt === null || !Number.isInteger(prefix) || prefix < 16 || prefix > 32) {
@@ -7309,7 +7309,7 @@
           const endInt = prefix <= 30 ? bcastInt - 1 : bcastInt;
           let count = 0;
           for (let cur = startInt; cur <= endInt; cur++) {
-            if (count >= QUICK_MAX_EXPAND) { capped = true; break; }
+            if (targets.length >= QUICK_MAX_EXPAND) { capped = true; break; }
             addTarget(intToIp(cur >>> 0));
             count++;
           }
@@ -7326,7 +7326,7 @@
           }
           let count = 0;
           for (let cur = sInt; cur <= eInt; cur++) {
-            if (count >= QUICK_MAX_EXPAND) { capped = true; break; }
+            if (targets.length >= QUICK_MAX_EXPAND) { capped = true; break; }
             addTarget(intToIp(cur >>> 0));
             count++;
           }
@@ -7343,7 +7343,7 @@
             invalidTokens.push(tok);
             continue;
           }
-          for (let oct = sOct; oct <= eOct; oct++) {
+          for (let oct = sOct; oct <= eOct; oct++) { if (targets.length >= QUICK_MAX_EXPAND) { capped = true; break; }
             addTarget(`${prefixIp}.${oct}`);
           }
           continue;
@@ -8110,7 +8110,7 @@
           ? `<span class="office-badge ${offClass} has-tooltip" data-tooltip="${escapeHtml(offDetail)}">${escapeHtml(offLic)}</span>`
           : `<span style="color:var(--text-muted);">-</span>`;
 
-        let diskHtml = pc.Disk_C_Free || '-';
+        let diskHtml = escapeHtml(pc.Disk_C_Free || '-');
         if (pc.Disk_C_Free && pc.Disk_C_Free.includes('%')) {
           const match = pc.Disk_C_Free.match(/(\d+)%\s+free/i);
           if (match && parseInt(match[1]) <= 15) {
@@ -8204,8 +8204,8 @@
         }
 
         const statusBadge = hasTooltip
-          ? `<span class="status-badge ${badgeClass} has-tooltip" data-tooltip="${escapeHtml(tooltipText)}">${stDisplay}</span>`
-          : `<span class="status-badge ${badgeClass}">${stDisplay}</span>`;
+          ? `<span class="status-badge ${badgeClass} has-tooltip" data-tooltip="${escapeHtml(tooltipText)}">${escapeHtml(stDisplay)}</span>`
+          : `<span class="status-badge ${badgeClass}">${escapeHtml(stDisplay)}</span>`;
 
         const countBadge = `<span class="nav-badge" style="background:rgba(2,132,199,0.15); color:var(--accent-primary); font-weight:700;">${pc.SoftwareCount || 0} Apps</span>`;
 

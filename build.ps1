@@ -27,16 +27,16 @@ Write-Host '  FTI PC Inventory Tool - Enterprise Native Build  ' -ForegroundColo
 Write-Host '===================================================' -ForegroundColor Cyan
 
 # 1. Resolve source paths
-$srcCore     = Join-Path $PSScriptRoot 'src\Get-PCInventory.Core.ps1'
-$srcServer   = Join-Path $PSScriptRoot 'src\AppServer.ps1'
-$srcHtml     = Join-Path $PSScriptRoot 'src\web\index.html'
-$srcCs       = Join-Path $PSScriptRoot 'src\host\Program.cs'
+$srcCore = Join-Path $PSScriptRoot 'src\Get-PCInventory.Core.ps1'
+$srcServer = Join-Path $PSScriptRoot 'src\AppServer.ps1'
+$srcHtml = Join-Path $PSScriptRoot 'src\web\index.html'
+$srcCs = Join-Path $PSScriptRoot 'src\host\Program.cs'
 $srcManifest = Join-Path $PSScriptRoot 'src\host\app.manifest'
 
-if (-not (Test-Path $srcCore))     { throw "Cannot find $srcCore" }
-if (-not (Test-Path $srcServer))   { throw "Cannot find $srcServer" }
-if (-not (Test-Path $srcHtml))     { throw "Cannot find $srcHtml" }
-if (-not (Test-Path $srcCs))       { throw "Cannot find $srcCs" }
+if (-not (Test-Path $srcCore)) { throw "Cannot find $srcCore" }
+if (-not (Test-Path $srcServer)) { throw "Cannot find $srcServer" }
+if (-not (Test-Path $srcHtml)) { throw "Cannot find $srcHtml" }
+if (-not (Test-Path $srcCs)) { throw "Cannot find $srcCs" }
 if (-not (Test-Path $srcManifest)) { throw "Cannot find $srcManifest" }
 
 $tempDir = Join-Path $env:TEMP 'FTI_Inventory_Build'
@@ -54,7 +54,8 @@ $verData = $null
 if (Test-Path $versionFile) {
     try {
         $verData = Get-Content -Path $versionFile -Raw -Encoding UTF8 | ConvertFrom-Json
-    } catch {}
+    }
+    catch {}
 }
 
 if ($Version) {
@@ -64,7 +65,8 @@ if ($Version) {
     if ($appVersion -match '\.(\d+)$') {
         $buildRevision = [int]$Matches[1]
     }
-} else {
+}
+else {
     $buildRevision = 1
     if ($verData -and $verData.lastBuildDate -eq $todayStr) {
         $buildRevision = [int]$verData.buildRevision + 1
@@ -87,7 +89,7 @@ Write-Host "      Build Version: $displayVersion ($nowTimestamp)" -ForegroundCol
 
 # Stage and inject version strings into temp copies (leaving tracked source files clean)
 $stagedHtml = Join-Path $tempDir 'index.html'
-$stagedCs   = Join-Path $tempDir 'Program.cs'
+$stagedCs = Join-Path $tempDir 'Program.cs'
 
 # Prepare Staged Web UI Title & Version Tag in $stagedHtml
 $htmlContentRaw = [System.IO.File]::ReadAllText($srcHtml, [System.Text.Encoding]::UTF8)
@@ -121,7 +123,8 @@ if ($csContentRaw -match '\[assembly:\s*AssemblyInformationalVersion\(".*?"\)\]'
         '\[assembly:\s*AssemblyInformationalVersion\(".*?"\)\]',
         "[assembly: AssemblyInformationalVersion(""$displayVersion ($nowTimestamp)"")]"
     )
-} else {
+}
+else {
     $csContentRaw = $csContentRaw -replace '(\[assembly:\s*AssemblyFileVersion\(.*?\);?\])', "`$1`r`n[assembly: AssemblyInformationalVersion(`"$displayVersion ($nowTimestamp)`")]"
 }
 [System.IO.File]::WriteAllText($stagedCs, $csContentRaw, $utf8NoBom)
@@ -152,7 +155,7 @@ Write-Host '[2/7] Validating Web UI, JavaScript & PowerShell syntax integrity...
 Write-Host '      Validating PowerShell AST syntax (Core & Server)...' -ForegroundColor Gray
 $psFilesToValidate = @(
     @{ Name = 'Core Engine'; Path = $srcCore },
-    @{ Name = 'App Server';  Path = $srcServer }
+    @{ Name = 'App Server'; Path = $srcServer }
 )
 foreach ($psItem in $psFilesToValidate) {
     $tokens = $null
@@ -193,7 +196,8 @@ if ($headlessBrowser) {
 
         if ([string]::IsNullOrWhiteSpace($domContent)) {
             $engineFailures += "Headless browser DOM dump was empty."
-        } else {
+        }
+        else {
             $hasFatalBanner = $domContent.Contains('<div id="fatalJsBanner"')
             $hasJsLoaded = $domContent.Contains('data-js-loaded="true"')
 
@@ -208,7 +212,8 @@ if ($headlessBrowser) {
             $uiVerified = $true
             Write-Host '      Web UI syntax integrity verified via headless browser (Zero syntax errors, full execution confirmed).' -ForegroundColor Green
         }
-    } else {
+    }
+    else {
         $engineFailures += "Could not capture headless browser DOM dump from $headlessBrowser."
     }
 }
@@ -233,12 +238,14 @@ if (-not $uiVerified -and $nodeCmd) {
         }
         $uiVerified = $true
         Write-Host '      JavaScript syntax integrity verified via Node.js (0 syntax errors).' -ForegroundColor Green
-    } catch [System.Management.Automation.RuntimeException] {
+    }
+    catch [System.Management.Automation.RuntimeException] {
         if ($_.Exception.Message -match 'JavaScript syntax error detected') {
             throw
         }
         $engineFailures += "Node.js syntax check error: $($_.Exception.Message)"
-    } catch {
+    }
+    catch {
         $engineFailures += "Node.js syntax check error: $($_.Exception.Message)"
     }
 }
@@ -246,7 +253,8 @@ if (-not $uiVerified -and $nodeCmd) {
 if (-not $uiVerified) {
     $errSummary = if ($engineFailures.Count -gt 0) {
         $engineFailures -join ' | '
-    } else {
+    }
+    else {
         'No supported headless verification engine (Edge, Chrome, or Node.js) available on this system.'
     }
     throw "Fail-Fast verification failed: $errSummary. Web UI integrity could not be verified."
@@ -323,14 +331,14 @@ Write-Host "      Icon generated at $tempIcon" -ForegroundColor Green
 
 # 5. Merge Engine Scripts (Core + HTML + Server)
 Write-Host '[4/7] Merging Core, Web UI, and Server into unified engine...' -ForegroundColor Yellow
-$coreBytes   = [System.IO.File]::ReadAllBytes($srcCore)
-$coreB64     = [System.Convert]::ToBase64String($coreBytes)
-$htmlBytes   = [System.IO.File]::ReadAllBytes($stagedHtml)
-$htmlB64     = [System.Convert]::ToBase64String($htmlBytes)
-$serverCode  = [System.IO.File]::ReadAllText($srcServer, [System.Text.Encoding]::UTF8)
+$coreBytes = [System.IO.File]::ReadAllBytes($srcCore)
+$coreB64 = [System.Convert]::ToBase64String($coreBytes)
+$htmlBytes = [System.IO.File]::ReadAllBytes($stagedHtml)
+$htmlB64 = [System.Convert]::ToBase64String($htmlBytes)
+$serverCode = [System.IO.File]::ReadAllText($srcServer, [System.Text.Encoding]::UTF8)
 
 # Extract param block from $serverCode to ensure it is the very first statement
-$paramBlock = "param([switch]`$Silent, [switch]`$ScheduledRun, [string]`$OutDir = 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data')"
+$paramBlock = "param([switch]`$Silent, [switch]`$ScheduledRun, [string]`$OutDir = '')"
 $restOfServer = $serverCode
 if ($serverCode -match '(?ms)^\s*param\s*\((.*?)\)\s*(.*)$') {
     $paramBlock = "param($($matches[1]))"
@@ -376,7 +384,8 @@ $targetExeInTemp = Join-Path $tempDir $ExeName
 if (Test-Path $targetExeInTemp) {
     try {
         Remove-Item $targetExeInTemp -Force -ErrorAction Stop
-    } catch {
+    }
+    catch {
         Write-Warning "Temp $ExeName is locked. Using alternate temp name."
         $ExeName = 'FTI_PC_Inventory_Build.exe'
         $targetExeInTemp = Join-Path $tempDir $ExeName
@@ -424,12 +433,14 @@ if (-not $SkipSign) {
         Set-AuthenticodeSignature -FilePath $targetExeInTemp -Certificate $cert -HashAlgorithm SHA256 | Out-Null
         $sig = Get-AuthenticodeSignature -FilePath $targetExeInTemp
         Write-Host "      Signature Status: $($sig.Status) (Signer: $($cert.Subject))" -ForegroundColor Green
-    } catch {
+    }
+    catch {
         Write-Warning "Authenticode signing skipped: $($_.Exception.Message)"
         Write-Host "      [TIP] For signed release binaries, run PowerShell as Administrator." -ForegroundColor Cyan
         $cert = $null
     }
-} else {
+}
+else {
     Write-Host "      Signing skipped (-SkipSign specified)." -ForegroundColor Gray
 }
 
@@ -449,7 +460,8 @@ $certExportPath = Join-Path $OutputDir 'FTI_Enterprise_Certificate.cer'
 if ($cert) {
     try {
         Export-Certificate -Cert $cert -FilePath $certExportPath -Force | Out-Null
-    } catch {
+    }
+    catch {
         Write-Warning "Could not export certificate: $($_.Exception.Message)"
     }
 }
@@ -488,7 +500,8 @@ try {
         }
         Copy-Item $installBatPath (Join-Path $appDistDir 'Install_Certificate.bat') -Force -ErrorAction SilentlyContinue
     }
-} catch {}
+}
+catch {}
 
 # (Drive root copy removed - deployment is strictly contained within OutputDir)
 

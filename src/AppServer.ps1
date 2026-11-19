@@ -1,10 +1,37 @@
 param(
     [switch]$Silent,
     [switch]$ScheduledRun,
-    [string]$OutDir = 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data',
+    [string]$OutDir = '',
     [string]$ComputerListFile,
     [switch]$ScanLocalhost
 )
+
+function Get-DefaultOutDir {
+    if ($env:FTI_INVENTORY_DATA) { return $env:FTI_INVENTORY_DATA }
+    $candidates = @()
+    if ($env:FTI_HOST_EXE) {
+        try {
+            $exeDir = Split-Path -Parent $env:FTI_HOST_EXE
+            $p1 = Split-Path -Parent $exeDir
+            $p2 = Split-Path -Parent $p1
+            if ($p2) { $candidates += (Join-Path $p2 'Inventory_Tool_data') }
+            if ($p1) { $candidates += (Join-Path $p1 'Inventory_Tool_data') }
+        } catch {}
+    }
+    if ($PSScriptRoot) {
+        try {
+            $s1 = Split-Path -Parent $PSScriptRoot
+            $s2 = Split-Path -Parent $s1
+            if ($s2) { $candidates += (Join-Path $s2 'Inventory_Tool_data') }
+        } catch {}
+    }
+    $found = $candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
+    if ($found) { return $found }
+    return (Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'FTI_PC_Inventory_Tool\Data')
+}
+
+$script:defaultOutDir = Get-DefaultOutDir
+if ([string]::IsNullOrWhiteSpace($OutDir)) { $OutDir = $script:defaultOutDir }
 
 # --- 1. Resolve Core Engine & Web UI Assets ---
 if (-not $CoreScript) {
@@ -29,6 +56,7 @@ if ($Silent -or $ScheduledRun) {
     $stampStart = $startTime.ToString('yyyy-MM-dd HH:mm:ss')
     "[$stampStart] Scheduled background scan started (OutDir=$OutDir)." | Out-File $logFile -Append -Encoding UTF8
 
+    $ps = $null
     try {
         $coreParams = @{
             OutDir     = $OutDir
@@ -53,6 +81,9 @@ if ($Silent -or $ScheduledRun) {
     catch {
         $stampErr = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
         "[$stampErr] Scheduled scan failed: $($_.Exception.Message)" | Out-File $logFile -Append -Encoding UTF8
+    }
+    finally {
+        if ($ps) { try { $ps.Dispose() } catch {} }
     }
     exit 0
 }
@@ -284,7 +315,18 @@ function Invoke-WithMasterCsvMutex {
     $mtx = $null
     $acquired = $false
     try {
-        $mtx = New-Object System.Threading.Mutex($false, 'Local\FTI_PC_Inventory_MasterCsvMutex')
+        try {
+            $mSec = New-Object System.Security.AccessControl.MutexSecurity
+            $adminSid = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid, $null)
+            $sysSid   = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::LocalSystemSid, $null)
+            $mSec.AddAccessRule((New-Object System.Security.AccessControl.MutexAccessRule($adminSid, [System.Security.AccessControl.MutexRights]::FullControl, [System.Security.AccessControl.AccessControlType]::Allow)))
+            $mSec.AddAccessRule((New-Object System.Security.AccessControl.MutexAccessRule($sysSid, [System.Security.AccessControl.MutexRights]::FullControl, [System.Security.AccessControl.AccessControlType]::Allow)))
+            $createdNew = $false
+            $mtx = New-Object System.Threading.Mutex($false, 'Global\FTI_PC_Inventory_MasterCsvMutex', [ref]$createdNew, $mSec)
+        }
+        catch [System.UnauthorizedAccessException] {
+            $mtx = New-Object System.Threading.Mutex($false, 'Local\FTI_PC_Inventory_MasterCsvMutex')
+        }
         try {
             $acquired = $mtx.WaitOne(15000)
         }
@@ -376,14 +418,14 @@ $script:inAppSchedule = @{
     lastRunAt       = $null
 }
 $script:lastScanParams = $null
-$script:lastOutDir = 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data'
+$script:lastOutDir = $script:defaultOutDir
 
 # Helper: Preload existing Master DB on backend startup for instant Dashboard & Grid display
 function Load-InitialMasterDb() {
     try {
         $masterPath = Join-Path $script:lastOutDir 'Hardware_Master.csv'
         if (-not (Test-Path -LiteralPath $masterPath)) {
-            $masterPath = 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data\Hardware_Master.csv'
+            $masterPath = (Join-Path $script:defaultOutDir 'Hardware_Master.csv')
         }
         if (Test-Path -LiteralPath $masterPath) {
             $csvHw = @(Import-Csv -LiteralPath $masterPath -Encoding UTF8)
@@ -395,7 +437,7 @@ function Load-InitialMasterDb() {
 
         $swMasterPath = Join-Path $script:lastOutDir 'Software_Master.csv'
         if (-not (Test-Path -LiteralPath $swMasterPath)) {
-            $swMasterPath = 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data\Software_Master.csv'
+            $swMasterPath = (Join-Path $script:defaultOutDir 'Software_Master.csv')
         }
         if (Test-Path -LiteralPath $swMasterPath) {
             $csvSw = @(Import-Csv -LiteralPath $swMasterPath -Encoding UTF8)
@@ -491,7 +533,7 @@ function Get-FtiWinTaskInfo() {
     try {
         $logPath = Join-Path $script:lastOutDir 'ScheduleRun.log'
         if (-not (Test-Path -LiteralPath $logPath)) {
-            $logPath = 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data\ScheduleRun.log'
+            $logPath = (Join-Path $script:defaultOutDir 'ScheduleRun.log')
         }
         if (Test-Path -LiteralPath $logPath) {
             $lines = Get-Content -LiteralPath $logPath -Tail 5 -Encoding UTF8 -ErrorAction SilentlyContinue
@@ -834,6 +876,10 @@ function Update-ScanProgress() {
         }
         finally {
             $script:psInstance.Dispose()
+            if ($script:activeQuickListFile -and (Test-Path -LiteralPath $script:activeQuickListFile)) {
+                try { Remove-Item -LiteralPath $script:activeQuickListFile -Force -ErrorAction SilentlyContinue } catch {}
+                $script:activeQuickListFile = $null
+            }
             $script:psInstance = $null
             $script:asyncResult = $null
             # Invalidate Master DB and Software in-memory caches on scan completion
@@ -868,13 +914,16 @@ function Start-ExecutionScan([hashtable]$params) {
     if ($script:psInstance) { return $false }
 
     $outDir = [string]$params.outDir
-    if ([string]::IsNullOrWhiteSpace($outDir)) { $outDir = 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data' }
+    if ([string]::IsNullOrWhiteSpace($outDir)) { $outDir = $script:defaultOutDir }
+    if (-not (Test-SafeLocalPath $outDir)) {
+        throw "Invalid or unsafe output directory path: $outDir"
+    }
     $script:lastOutDir = $outDir
 
     if ($params.source -eq 'file') {
         $listFile = [string]$params.listFile
-        if ([string]::IsNullOrWhiteSpace($listFile) -or -not (Test-Path -LiteralPath $listFile)) {
-            throw "File not found: $listFile"
+        if ([string]::IsNullOrWhiteSpace($listFile) -or -not (Test-SafeLocalPath $listFile) -or -not (Test-Path -LiteralPath $listFile)) {
+            throw "Invalid or missing computer list file: $listFile"
         }
     }
 
@@ -887,6 +936,7 @@ function Start-ExecutionScan([hashtable]$params) {
         $quickListFile = Join-Path $env:TEMP ("fti_quick_targets_" + [System.DateTime]::Now.ToString('yyyyMMddHHmmssfff') + ".txt")
         $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
         [System.IO.File]::WriteAllLines($quickListFile, [string[]]$rawQuick, $utf8NoBom)
+        $script:activeQuickListFile = $quickListFile
     }
 
     if (-not (Test-Path -LiteralPath $outDir)) {
@@ -981,7 +1031,7 @@ function Start-ExecutionScan([hashtable]$params) {
 function Start-DemoScan {
     if ($script:psInstance) { return $false }
 
-    $demoOutDir = 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data\Demo'
+    $demoOutDir = (Join-Path $script:defaultOutDir 'Demo')
     if (-not (Test-Path -LiteralPath $demoOutDir)) {
         [void](New-Item -ItemType Directory -Path $demoOutDir -Force)
     }
@@ -1363,7 +1413,7 @@ while ($running) {
                 $validOrigin = $true
                 if ($method -in @('POST', 'PUT', 'DELETE')) {
                     if (-not [string]::IsNullOrWhiteSpace($originHdr)) {
-                        $validOrigin = $originHdr -match '^http://(127\.0\.0\.1|localhost):\d+$'
+                        $validOrigin = $originHdr -match "^http://(127\.0\.0\.1|localhost):$port$"
                     }
                     $secFetchSite = $req.Headers['Sec-Fetch-Site']
                     if (-not [string]::IsNullOrWhiteSpace($secFetchSite)) {
@@ -1402,6 +1452,7 @@ while ($running) {
             if ($path -eq '/' -or $path -eq '/index.html') {
                 $metaTag = "<meta name=`"fti-api-token`" content=`"$($script:ApiSessionToken)`">"
                 $htmlWithToken = ([regex]'(?i)<head>').Replace($HtmlContent, "<head>`r`n  $metaTag", 1)
+                $htmlWithToken = $htmlWithToken.Replace('{{FTI_DEFAULT_OUTDIR}}', [System.Net.WebUtility]::HtmlEncode($script:defaultOutDir))
                 $buf = [System.Text.Encoding]::UTF8.GetBytes($htmlWithToken)
                 $res.ContentType = 'text/html; charset=utf-8'
                 $res.ContentLength64 = $buf.Length
@@ -1532,6 +1583,10 @@ while ($running) {
                 Write-SystemLog 'INFO' 'Restart request received from UI.'
                 if ($script:psInstance) {
                     try { $script:psInstance.Stop(); $script:psInstance.Dispose() } catch {}
+                    if ($script:activeQuickListFile -and (Test-Path -LiteralPath $script:activeQuickListFile)) {
+                        try { Remove-Item -LiteralPath $script:activeQuickListFile -Force -ErrorAction SilentlyContinue } catch {}
+                        $script:activeQuickListFile = $null
+                    }
                     $script:psInstance = $null
                 }
                 $exePath = Get-FtiExecutablePath
@@ -1563,7 +1618,7 @@ while ($running) {
                     }
                     else {
                         # Fallback: check Master Software file
-                        $outDirParam = if ($script:lastOutDir) { $script:lastOutDir } else { 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data' }
+                        $outDirParam = if ($script:lastOutDir) { $script:lastOutDir } else { $script:defaultOutDir }
                         $swMasterPath = Join-Path $outDirParam 'Software_Master.csv'
                         if (Test-Path -LiteralPath $swMasterPath) {
                             try {
@@ -1684,7 +1739,10 @@ while ($running) {
                     }
 
                     try {
-                        $safeOutDir = if ($script:lastOutDir) { [string]$script:lastOutDir } else { 'C:\Inventory' }
+                        $safeOutDir = if ($script:lastOutDir) { [string]$script:lastOutDir } else { $script:defaultOutDir }
+                        if (-not (Test-SafeLocalPath $safeOutDir) -or ($safeOutDir -match '["\r\n\x00-\x1F]')) {
+                            throw "Unsafe or invalid output directory path for Scheduled Task: $safeOutDir"
+                        }
                         if ($safeOutDir -match '^[a-zA-Z]:\\?$') {
                             $safeOutDir = $safeOutDir.Substring(0, 2) + '\.'
                         }
@@ -1760,7 +1818,7 @@ while ($running) {
             elseif ($path -eq '/api/master/status' -and $method -eq 'GET') {
                 $outDirParam = $req.QueryString['outDir']
                 if ([string]::IsNullOrWhiteSpace($outDirParam)) {
-                    $outDirParam = if ($script:lastOutDir) { $script:lastOutDir } else { 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data' }
+                    $outDirParam = if ($script:lastOutDir) { $script:lastOutDir } else { $script:defaultOutDir }
                 }
                 if (-not (Test-SafeLocalPath $outDirParam)) {
                     $res.StatusCode = 400
@@ -1781,7 +1839,7 @@ while ($running) {
                 $swExists = Test-Path -LiteralPath $swMasterPath
                 $swSumExists = Test-Path -LiteralPath $swSumPath
 
-                $hwInfo = @{ exists = $false; size = 0; lastModified = '-'; total = 0; ok = 0; offline = 0; error = 0 }
+                $hwInfo = @{ exists = $false; path = $hwMasterPath; size = 0; lastModified = '-'; total = 0; ok = 0; offline = 0; error = 0 }
                 $machines = [System.Collections.Generic.List[object]]::new()
 
                 if ($hwExists) {
@@ -1854,7 +1912,7 @@ while ($running) {
                     $script:masterCache.Remove($hwMasterPath)
                 }
 
-                $swInfo = @{ exists = $false; size = 0; lastModified = '-'; totalRecords = 0; uniqueApps = 0 }
+                $swInfo = @{ exists = $false; path = $swMasterPath; size = 0; lastModified = '-'; total = 0; totalRecords = 0; uniqueApps = 0 }
                 $swMachines = [System.Collections.Generic.List[object]]::new()
                 if ($swExists) {
                     try {
@@ -1872,6 +1930,7 @@ while ($running) {
                                     Import-Csv -LiteralPath $swMasterPath -Encoding UTF8
                                 })
                             $swInfo.totalRecords = $swRows.Count
+                            $swInfo.total = $swRows.Count
 
                             # Aggregate into per-PC software summary list for the Software Scan tab
                             $swGrouped = $swRows | Group-Object PCName
@@ -1973,7 +2032,7 @@ while ($running) {
 
                 $outDirParam = [string]$params.outDir
                 if ([string]::IsNullOrWhiteSpace($outDirParam)) {
-                    $outDirParam = if ($script:lastOutDir) { $script:lastOutDir } else { 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data' }
+                    $outDirParam = if ($script:lastOutDir) { $script:lastOutDir } else { $script:defaultOutDir }
                 }
                 if (-not (Test-SafeLocalPath $outDirParam)) {
                     $res.StatusCode = 400
@@ -2289,7 +2348,7 @@ while ($running) {
             elseif ($path -eq '/api/open-folder' -and $method -eq 'POST') {
                 $body = Read-RequestBody $req
                 $params = $body | ConvertFrom-Json
-                $dir = if ($params.folder) { [string]$params.folder } else { 'C:\Users\nopmunin\Desktop\AI-Projects\FTI_INTERN_PROGRAMS\Inventory_Tool_data' }
+                $dir = if ($params.folder) { [string]$params.folder } else { $script:defaultOutDir }
 
                 if (-not (Test-SafeLocalPath $dir)) {
                     $res.StatusCode = 400
@@ -2390,6 +2449,10 @@ Restore-LidCloseAwakeGuard
 if ($script:psInstance) {
     try { $script:psInstance.Stop() } catch {}
     try { $script:psInstance.Dispose() } catch {}
+    if ($script:activeQuickListFile -and (Test-Path -LiteralPath $script:activeQuickListFile)) {
+        try { Remove-Item -LiteralPath $script:activeQuickListFile -Force -ErrorAction SilentlyContinue } catch {}
+        $script:activeQuickListFile = $null
+    }
     $script:psInstance = $null
 }
 

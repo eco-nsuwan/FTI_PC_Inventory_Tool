@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Security.AccessControl;
+using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
 
@@ -14,9 +15,9 @@ using System.Text;
 [assembly: AssemblyCopyright("Copyright © Function International 2026")]
 [assembly: AssemblyTrademark("FTI")]
 [assembly: AssemblyCulture("")]
-[assembly: AssemblyVersion("2026.11.19.2")]
-[assembly: AssemblyFileVersion("2026.11.19.2")]
-[assembly: AssemblyInformationalVersion("v2026.11.19.2 Enterprise (2026-11-19 16:30:00)")]
+[assembly: AssemblyVersion("2026.11.19.4")]
+[assembly: AssemblyFileVersion("2026.11.19.4")]
+[assembly: AssemblyInformationalVersion("v2026.11.19.4 Enterprise")]
 
 namespace FTI.PCInventory
 {
@@ -40,32 +41,92 @@ namespace FTI.PCInventory
 
                 string scriptPath = Path.Combine(engineDir, "app_engine.ps1");
 
-                // Extract embedded PowerShell engine with concurrency resilience and secure ACLs
+                // Extract embedded PowerShell engine using hash-versioned atomic write (eliminates 0-byte truncation race)
                 using (Stream resStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("FTI.Engine"))
                 {
                     if (resStream != null)
                     {
-                        try
+                        byte[] engineBytes;
+                        using (MemoryStream ms = new MemoryStream())
                         {
-                            // Open with FileShare.ReadWrite so parallel readers can execute without collision
-                            using (FileStream fs = new FileStream(scriptPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-                            {
-                                resStream.CopyTo(fs);
-                            }
-                            ApplySecureFileAcl(scriptPath);
+                            resStream.CopyTo(ms);
+                            engineBytes = ms.ToArray();
                         }
-                        catch (IOException)
+
+                        string shortHash = ComputeShortSha256(engineBytes);
+                        scriptPath = Path.Combine(engineDir, string.Format("app_engine_{0}.ps1", shortHash));
+
+                        // Reject reparse points on target script file
+                        if (File.Exists(scriptPath) && (File.GetAttributes(scriptPath) & FileAttributes.ReparsePoint) != 0)
                         {
-                            // If scriptPath is locked by another running instance, check if it's usable
-                            if (!File.Exists(scriptPath) || new FileInfo(scriptPath).Length == 0)
+                            try { File.Delete(scriptPath); } catch { }
+                        }
+
+                        bool targetReady = false;
+                        if (File.Exists(scriptPath))
+                        {
+                            try
                             {
-                                // Fall back to unique process-isolated temporary engine script
-                                scriptPath = Path.Combine(engineDir, string.Format("app_engine_{0}.ps1", Process.GetCurrentProcess().Id));
+                                FileInfo fi = new FileInfo(scriptPath);
+                                if (fi.Length == engineBytes.Length)
+                                {
+                                    targetReady = true;
+                                }
+                            }
+                            catch { }
+                        }
+
+                        if (!targetReady)
+                        {
+                            string pidTmp = Path.Combine(engineDir, string.Format("app_engine_{0}_{1}.tmp.ps1", shortHash, Process.GetCurrentProcess().Id));
+                            try
+                            {
+                                using (FileStream fs = new FileStream(pidTmp, FileMode.Create, FileAccess.Write, FileShare.None))
+                                {
+                                    fs.Write(engineBytes, 0, engineBytes.Length);
+                                    fs.Flush(true);
+                                }
+                                ApplySecureFileAcl(pidTmp);
+
+                                try
+                                {
+                                    if (!File.Exists(scriptPath))
+                                    {
+                                        File.Move(pidTmp, scriptPath);
+                                        targetReady = true;
+                                    }
+                                    else
+                                    {
+                                        // Another concurrent instance just finalized the same content-addressed file
+                                        try { File.Delete(pidTmp); } catch { }
+                                        targetReady = true;
+                                    }
+                                }
+                                catch (IOException)
+                                {
+                                    if (File.Exists(scriptPath) && new FileInfo(scriptPath).Length == engineBytes.Length)
+                                    {
+                                        try { File.Delete(pidTmp); } catch { }
+                                        targetReady = true;
+                                    }
+                                    else
+                                    {
+                                        // Fall back to executing our process-isolated copy and clean it up on exit
+                                        scriptPath = pidTmp;
+                                        _tempScriptToClean = pidTmp;
+                                        targetReady = true;
+                                    }
+                                }
+                            }
+                            catch (IOException)
+                            {
+                                // Ultimate fallback: PID-unique script
+                                scriptPath = Path.Combine(engineDir, string.Format("app_engine_pid_{0}.ps1", Process.GetCurrentProcess().Id));
                                 _tempScriptToClean = scriptPath;
-                                resStream.Position = 0;
                                 using (FileStream fs = new FileStream(scriptPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
                                 {
-                                    resStream.CopyTo(fs);
+                                    fs.Write(engineBytes, 0, engineBytes.Length);
+                                    fs.Flush(true);
                                 }
                                 ApplySecureFileAcl(scriptPath);
                             }
@@ -124,9 +185,16 @@ namespace FTI.PCInventory
                     }
                 }
 
+                string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
+                string psExePath = Path.Combine(systemDir, @"WindowsPowerShell\v1.0\powershell.exe");
+                if (!File.Exists(psExePath))
+                {
+                    psExePath = "powershell.exe";
+                }
+
                 ProcessStartInfo psi = new ProcessStartInfo
                 {
-                    FileName = "powershell.exe",
+                    FileName = psExePath,
                     Arguments = argBuilder.ToString(),
                     UseShellExecute = false,
                     CreateNoWindow = true,
@@ -159,17 +227,63 @@ namespace FTI.PCInventory
                 {
                     RestoreLidActionFallback(_localAppDir);
                     CleanupTempScript(_tempScriptToClean);
-                    if (!Directory.Exists(_localAppDir))
+                    if (!string.IsNullOrEmpty(_localAppDir) && !Directory.Exists(_localAppDir))
                     {
                         Directory.CreateDirectory(_localAppDir);
                     }
-                    string logFile = Path.Combine(_localAppDir, "launcher_error.log");
-                    File.AppendAllText(logFile, string.Format("[{0}] Launcher Exception: {1}\r\n", DateTime.Now, ex));
+                    if (!string.IsNullOrEmpty(_localAppDir))
+                    {
+                        string logFile = Path.Combine(_localAppDir, "launcher_error.log");
+                        File.AppendAllText(logFile, string.Format("[{0}] Launcher Exception: {1}\r\n", DateTime.Now, ex));
+                    }
                 }
                 catch { }
 
                 return 1;
             }
+        }
+
+        private static string ComputeShortSha256(byte[] data)
+        {
+            using (SHA256 sha = SHA256.Create())
+            {
+                byte[] hash = sha.ComputeHash(data);
+                StringBuilder sb = new StringBuilder(12);
+                for (int i = 0; i < 6; i++)
+                {
+                    sb.Append(hash[i].ToString("x2"));
+                }
+                return sb.ToString();
+            }
+        }
+
+        private static bool HasOtherActiveInstance()
+        {
+            try
+            {
+                int myPid = Process.GetCurrentProcess().Id;
+                string myName = Process.GetCurrentProcess().ProcessName;
+                Process[] procs = Process.GetProcessesByName(myName);
+                try
+                {
+                    foreach (Process p in procs)
+                    {
+                        if (p.Id != myPid)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                finally
+                {
+                    foreach (Process p in procs)
+                    {
+                        try { p.Dispose(); } catch { }
+                    }
+                }
+            }
+            catch { }
+            return false;
         }
 
         private static void EnsureSecureDirectory(string dirPath)
@@ -277,7 +391,7 @@ namespace FTI.PCInventory
         {
             try
             {
-                if (!string.IsNullOrEmpty(path) && path.Contains("app_engine_") && File.Exists(path))
+                if (!string.IsNullOrEmpty(path) && (path.Contains(".tmp.ps1") || path.Contains("app_engine_pid_")) && File.Exists(path))
                 {
                     File.Delete(path);
                 }
@@ -349,6 +463,9 @@ namespace FTI.PCInventory
         {
             try
             {
+                // Multi-instance guard: do not restore/delete lid backup while another FTI instance is still running
+                if (HasOtherActiveInstance()) return;
+
                 if (string.IsNullOrEmpty(localAppDir))
                 {
                     string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -376,7 +493,11 @@ namespace FTI.PCInventory
                         if (end > 0) int.TryParse(s.Substring(0, end).Trim(), out dcVal);
                     }
 
-                    ProcessStartInfo psi = new ProcessStartInfo("powercfg.exe")
+                    string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
+                    string powerCfgPath = Path.Combine(systemDir, "powercfg.exe");
+                    if (!File.Exists(powerCfgPath)) powerCfgPath = "powercfg.exe";
+
+                    ProcessStartInfo psi = new ProcessStartInfo(powerCfgPath)
                     {
                         CreateNoWindow = true,
                         UseShellExecute = false,
