@@ -8,7 +8,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>FTI PC Inventory Tool - v2026.11.14.1</title>
+  <title>FTI PC Inventory Tool - v2026.11.13.1</title>
 
   <script>
 
@@ -30,7 +30,25 @@
 
       }
 
-      b.innerHTML = '<span>⚠️ Script Error: ' + (e.message || 'Unknown') + ' (Line ' + e.lineno + ')</span><button onclick="this.parentElement.remove()" style="background:transparent;border:none;color:#fff;cursor:pointer;font-size:16px;">✖</button>';
+      b.textContent = '';
+
+      var msgSpan = document.createElement('span');
+
+      msgSpan.textContent = '⚠️ Script Error: ' + (e.message || 'Unknown') + ' (Line ' + (e.lineno || '?') + ')';
+
+      var closeBtn = document.createElement('button');
+
+      closeBtn.type = 'button';
+
+      closeBtn.textContent = '✖';
+
+      closeBtn.style.cssText = 'background:transparent;border:none;color:#fff;cursor:pointer;font-size:16px;';
+
+      closeBtn.addEventListener('click', function() { b.remove(); });
+
+      b.appendChild(msgSpan);
+
+      b.appendChild(closeBtn);
 
     });
 
@@ -100,7 +118,7 @@
 
       --text-secondary: #334155;
 
-      --text-muted: #64748b;
+      --text-muted: #475569;
 
       --accent-primary: #0284c7;
 
@@ -121,6 +139,11 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :focus-visible {
+      outline: 2px solid var(--accent-primary);
+      outline-offset: 2px;
+    }
 
     body {
 
@@ -158,8 +181,6 @@
 
     header {
 
-      height: 50px;
-
       min-height: 50px;
 
       display: flex;
@@ -168,7 +189,11 @@
 
       justify-content: space-between;
 
-      padding: 0 16px;
+      flex-wrap: wrap;
+
+      gap: 8px;
+
+      padding: 6px 16px;
 
       background: var(--bg-surface);
 
@@ -180,94 +205,143 @@
 
     }
 
+    @media (max-width: 750px) {
+      header {
+        padding: 6px 10px;
+        gap: 6px;
+      }
+      .brand-subtitle, #topScheduleBanner {
+        font-size: 0.7rem;
+      }
+    }
+
     .brand-group {
-
       display: flex;
-
       align-items: center;
-
       gap: 10px;
-
+      min-width: 0;
     }
 
     .brand-badge {
-
-      width: 32px;
-
-      height: 32px;
-
-      background: linear-gradient(135deg, #0284c7, #06b6d4);
-
-      border-radius: 8px;
-
+      position: relative;
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 55%, #06b6d4 100%);
+      border-radius: 10px;
       display: flex;
-
       align-items: center;
-
       justify-content: center;
-
-      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
-
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       color: #fff;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+    }
 
+    .brand-badge:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+
+    .brand-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      min-width: 0;
     }
 
     .brand-title {
-
-      font-size: 0.95rem;
-
-      font-weight: 700;
-
+      font-size: 0.94rem;
+      font-weight: 800;
+      letter-spacing: -0.015em;
+      line-height: 1.15;
       color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
+    .brand-subrow {
       display: flex;
-
       align-items: center;
-
       gap: 6px;
+      font-size: 0.67rem;
+      color: var(--text-muted);
+      line-height: 1.1;
+      min-width: 0;
+    }
 
+    .brand-subtitle-label {
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      font-size: 0.61rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .brand-subdot {
+      opacity: 0.45;
+      font-size: 0.65rem;
     }
 
     .version-tag {
-
-      font-size: 0.70rem;
-
-      padding: 1px 6px;
-
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.66rem;
+      padding: 0 5px;
       border-radius: 4px;
-
-      background: rgba(2, 132, 199, 0.15);
-
+      background: rgba(2, 132, 199, 0.1);
       color: var(--accent-primary);
-
       font-weight: 600;
+      border: 1px solid rgba(2, 132, 199, 0.22);
+      white-space: nowrap;
+    }
 
-      border: 1px solid rgba(2, 132, 199, 0.3);
-
+    .brand-divider {
+      width: 1px;
+      height: 22px;
+      background: var(--border-subtle);
+      flex-shrink: 0;
+      margin: 0 2px;
     }
 
     .admin-pill {
-
-      font-size: 0.72rem;
-
-      font-weight: 600;
-
-      padding: 2px 8px;
-
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 9px;
       border-radius: 999px;
-
-      background: rgba(16, 185, 129, 0.15);
-
+      background: rgba(16, 185, 129, 0.12);
       color: var(--accent-emerald);
-
-      border: 1px solid rgba(16, 185, 129, 0.3);
-
-      display: flex;
-
+      border: 1px solid rgba(16, 185, 129, 0.28);
+      backdrop-filter: blur(6px);
+      display: inline-flex;
       align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s;
+    }
 
-      gap: 4px;
+    .admin-pill.is-standard {
+      background: rgba(100, 116, 139, 0.12);
+      color: var(--text-secondary);
+      border-color: var(--border-subtle);
+    }
 
+    @media (max-width: 750px) {
+      .brand-subtitle-label,
+      .brand-subdot,
+      .brand-divider {
+        display: none;
+      }
+      .brand-badge {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+      }
+      .brand-title {
+        font-size: 0.85rem;
+      }
     }
 
     /* Live Auto-Scan Countdown Banner */
@@ -639,6 +713,147 @@
     }
 
     .compact-radio-card input { margin-top: 2px; accent-color: var(--accent-primary); }
+
+    /* Quick Targets Inline Box & Chips */
+    .quick-targets-box {
+      padding: 8px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .quick-chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      max-height: 58px;
+      overflow-y: auto;
+    }
+
+    .quick-chips-row:empty {
+      display: none;
+    }
+
+    .quick-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 0.66rem;
+      font-weight: 600;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s;
+      max-width: 100%;
+    }
+
+    .quick-chip:hover {
+      border-color: var(--accent-primary);
+      color: var(--text-main);
+    }
+
+    .quick-chip.recent {
+      border-style: dashed;
+    }
+
+    .quick-chip-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 120px;
+    }
+
+    .quick-chip-del {
+      opacity: 0.65;
+      font-weight: 700;
+      padding: 0 2px;
+      border-radius: 50%;
+      line-height: 1;
+    }
+
+    .quick-chip-del:hover {
+      opacity: 1;
+      color: var(--accent-rose);
+    }
+
+    .quick-targets-textarea {
+      width: 100%;
+      min-height: 62px;
+      max-height: 140px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      padding: 6px 8px;
+      border-radius: 5px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-input);
+      color: var(--text-main);
+      box-sizing: border-box;
+    }
+
+    .quick-targets-textarea:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+    }
+
+    .quick-targets-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .quick-count-badge {
+      font-size: 0.66rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: rgba(2, 132, 199, 0.15);
+      color: var(--accent-primary);
+    }
+
+    .quick-count-badge.warn {
+      background: rgba(245, 158, 11, 0.16);
+      color: var(--accent-amber);
+    }
+
+    .quick-actions-row {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .btn-quick-mini {
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface-elevated);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+
+    .btn-quick-mini:hover {
+      border-color: var(--accent-primary);
+      color: var(--text-main);
+    }
+
+    .quick-save-row {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
 
     /* Inputs & Form Elements */
 
@@ -1698,7 +1913,9 @@
 
       justify-content: space-between;
 
-      gap: 12px;
+      flex-wrap: wrap;
+
+      gap: 8px 12px;
 
       flex-shrink: 0;
 
@@ -1710,6 +1927,8 @@
 
       align-items: center;
 
+      flex-wrap: wrap;
+
       gap: 8px;
 
       font-size: 0.82rem;
@@ -1717,6 +1936,8 @@
       font-weight: 700;
 
       color: var(--text-main);
+
+      min-width: 0;
 
     }
 
@@ -1726,8 +1947,31 @@
 
       align-items: center;
 
+      flex-wrap: wrap;
+
       gap: 8px;
 
+      min-width: 0;
+
+    }
+
+    @media (max-width: 1024px) {
+      .sidebar-compact:not(.collapsed) {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 60;
+        box-shadow: var(--shadow-lg);
+      }
+      .sidebar-right-compact:not(.collapsed) {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 60;
+        box-shadow: var(--shadow-lg);
+      }
     }
 
     .search-table-input {
@@ -1905,6 +2149,12 @@
 
       border: 1px solid var(--border-subtle);
 
+      font-variant-numeric: tabular-nums;
+
+    }
+
+    .live-grid td, .log-content-body, .modal-body {
+      user-select: text;
     }
 
     .live-grid thead th {
@@ -2102,22 +2352,24 @@
     .dash-donut-wrap {
       display: flex;
       align-items: center;
-      justify-content: space-around;
-      gap: 16px;
-      padding: 10px 4px;
-      min-height: 170px;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 2px;
+      min-height: 122px;
     }
 
     .dash-donut-svg-box {
       position: relative;
-      width: 140px;
-      height: 140px;
+      width: 112px;
+      height: 112px;
       flex-shrink: 0;
     }
 
+    .dash-donut-svg-box svg,
     .dash-donut-svg {
       width: 100%;
       height: 100%;
+      display: block;
       transform: rotate(-90deg);
       border-radius: 50%;
     }
@@ -2143,17 +2395,20 @@
       pointer-events: none;
     }
 
-    .dash-donut-center-num {
+    .dash-donut-center-num,
+    .dash-donut-total {
       display: block;
-      font-size: 1.15rem;
+      font-size: 1.05rem;
       font-weight: 800;
+      font-variant-numeric: tabular-nums;
       color: var(--text-main);
       line-height: 1;
     }
 
-    .dash-donut-center-lbl {
+    .dash-donut-center-lbl,
+    .dash-donut-sub {
       display: block;
-      font-size: 0.62rem;
+      font-size: 0.58rem;
       font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
@@ -2164,9 +2419,10 @@
     .dash-donut-legend {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 3px;
       flex: 1;
-      max-height: 160px;
+      min-width: 0;
+      max-height: 124px;
       overflow-y: auto;
       padding-right: 4px;
     }
@@ -2176,7 +2432,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       cursor: pointer;
       padding: 2px 6px;
       border-radius: 4px;
@@ -2187,124 +2443,128 @@
       background: var(--bg-surface-elevated);
     }
 
-    .dash-donut-legend-color {
-      width: 8px;
-      height: 8px;
-      border-radius: 2px;
+    .dash-donut-legend-color,
+    .dash-donut-legend-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 3px;
       flex-shrink: 0;
+      display: inline-block;
     }
 
-    /* Vertical Column Chart Layout */
-    .dash-col-chart {
-      display: flex;
-      align-items: flex-end;
-      gap: 12px;
-      height: 160px;
-      padding: 16px 8px 8px 8px;
-      overflow-x: auto;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .dash-col-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    .dash-donut-legend-label {
       flex: 1;
-      min-width: 48px;
-      height: 100%;
-      justify-content: flex-end;
-      cursor: pointer;
-      transition: transform 0.15s ease;
-    }
-
-    .dash-col-item:hover {
-      transform: translateY(-2px);
-    }
-
-    .dash-col-val {
-      font-size: 0.68rem;
-      font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: 4px;
-      white-space: nowrap;
-    }
-
-    .dash-col-bar {
-      width: 100%;
-      max-width: 38px;
-      border-radius: 4px 4px 0 0;
-      transition: height 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
-      position: relative;
-    }
-
-    .dash-col-label {
-      font-size: 0.64rem;
-      color: var(--text-muted);
-      text-align: center;
-      margin-top: 6px;
-      white-space: nowrap;
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
-      width: 100%;
-      max-width: 70px;
+      white-space: nowrap;
+      color: var(--text-secondary);
     }
 
-    /* Treemap Distribution Grid Layout */
-    .dash-treemap-grid {
-      display: flex;
-      flex-wrap: wrap;
+    .dash-donut-legend-val {
+      flex-shrink: 0;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-main);
+    }
+
+    /* Vibrant Heatmap Grid Layout */
+    .dash-heatmap-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
       gap: 6px;
-      padding: 8px 2px;
-      min-height: 150px;
-      align-content: stretch;
+      padding: 4px 0;
+      min-height: 112px;
     }
 
-    .dash-treemap-tile {
+    .dash-heatmap-tile {
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 8px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle);
+      padding: 6px 8px;
+      border-radius: 7px;
       cursor: pointer;
-      transition: all 0.2s ease;
-      min-width: 75px;
-      min-height: 60px;
-      flex-grow: 1;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      min-height: 52px;
       position: relative;
       overflow: hidden;
+      backdrop-filter: blur(4px);
     }
 
-    .dash-treemap-tile:hover {
-      transform: scale(1.02);
-      filter: brightness(1.1);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    .dash-heatmap-tile:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.08);
       z-index: 2;
     }
 
-    .dash-treemap-name {
-      font-size: 0.70rem;
+    .dash-heatmap-tile-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .dash-heatmap-name {
+      font-size: 0.69rem;
       font-weight: 700;
-      color: #fff;
+      color: var(--text-main);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+      min-width: 0;
     }
 
-    .dash-treemap-meta {
+    .dash-heatmap-pct {
+      font-size: 0.64rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      padding: 1px 4px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      line-height: 1.1;
+    }
+
+    .dash-heatmap-body {
       display: flex;
-      justify-content: space-between;
       align-items: baseline;
-      font-size: 0.65rem;
-      color: rgba(255,255,255,0.85);
-      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+      justify-content: space-between;
+      margin-top: 4px;
+      gap: 4px;
+    }
+
+    .dash-heatmap-count {
+      font-weight: 800;
+      font-size: 0.88rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-main);
+      line-height: 1;
+    }
+
+    .dash-heatmap-unit {
+      font-size: 0.62rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-left: 2px;
+    }
+
+    .dash-heatmap-track {
+      width: 100%;
+      height: 3px;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
       margin-top: 4px;
     }
 
-    .dash-treemap-count {
-      font-weight: 800;
-      font-size: 0.85rem;
+    html.dark .dash-heatmap-track {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .dash-heatmap-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.4s ease;
     }
 
     .live-grid thead th:last-child {
@@ -3635,17 +3895,17 @@
     /* Zone 1: Executive KPI Cards (Glassmorphism & Health Rings) */
     .dash-zone-kpis {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 14px;
-      margin-bottom: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
     }
 
     .dash-kpi-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      padding: 14px 16px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      padding: 10px 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
       backdrop-filter: blur(8px);
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -3656,20 +3916,20 @@
     .dash-kpi-card:hover {
       transform: translateY(-2px);
       border-color: rgba(2, 132, 199, 0.4);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
     }
 
     .dash-kpi-inner {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 10px;
     }
 
     /* SVG Circular Health Ring */
     .dash-ring-wrap {
       position: relative;
-      width: 52px;
-      height: 52px;
+      width: 44px;
+      height: 44px;
       flex-shrink: 0;
     }
 
@@ -3681,7 +3941,7 @@
 
     .dash-ring-bg {
       fill: none;
-      stroke: rgba(255, 255, 255, 0.08);
+      stroke: var(--border-subtle);
       stroke-width: 3.5;
     }
 
@@ -3769,6 +4029,7 @@
       color: var(--text-main);
       letter-spacing: -0.02em;
       line-height: 1.2;
+      font-variant-numeric: tabular-nums;
     }
 
     .dash-kpi-sub {
@@ -3786,46 +4047,50 @@
       border-radius: 4px;
       font-weight: 600;
       font-size: 0.65rem;
+      font-variant-numeric: tabular-nums;
     }
 
     .kpi-sub-pill.ok { background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); }
-    .kpi-sub-pill.off { background: rgba(100, 116, 139, 0.2); color: #cbd5e1; }
+    .kpi-sub-pill.off { background: rgba(100, 116, 139, 0.16); color: var(--text-secondary); }
     .kpi-sub-pill.err { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); }
 
     /* Zone 2 & 3 Grids */
     .dash-grid-2 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-      gap: 16px;
-      margin-bottom: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+      gap: 10px;
+      margin-bottom: 10px;
     }
 
     .dash-grid-3 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 14px;
-      margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
     }
 
     /* Glass Cards */
     .dash-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      box-shadow: var(--shadow-md);
       backdrop-filter: blur(8px);
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      min-width: 0;
     }
 
     .dash-card-header {
-      padding: 12px 16px;
+      padding: 8px 12px;
       border-bottom: 1px solid var(--border-subtle);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(255, 255, 255, 0.02);
+      flex-wrap: wrap;
+      gap: 6px;
+      background: var(--bg-surface-elevated);
     }
 
     .dash-card-title-wrap {
@@ -3845,20 +4110,22 @@
       font-size: 0.68rem;
       padding: 2px 8px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
       color: var(--text-secondary);
       font-weight: 600;
+      font-variant-numeric: tabular-nums;
     }
 
-    .dash-card-badge.red { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); }
-    .dash-card-badge.amber { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); }
-    .dash-card-badge.purple { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+    .dash-card-badge.red { background: rgba(244, 63, 94, 0.15); border-color: rgba(244, 63, 94, 0.25); color: var(--accent-rose); }
+    .dash-card-badge.amber { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.25); color: var(--accent-amber); }
+    .dash-card-badge.purple { background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.25); color: #8b5cf6; }
 
     /* Segmented Toggle Inside Card Header */
     .dash-seg-toggle {
       display: flex;
       gap: 2px;
-      background: rgba(0, 0, 0, 0.25);
+      background: var(--bg-base);
       padding: 2px;
       border-radius: 6px;
       border: 1px solid var(--border-subtle);
@@ -3886,10 +4153,10 @@
     }
 
     .dash-card-body {
-      padding: 14px 16px;
+      padding: 10px 12px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 6px;
       flex: 1;
     }
 
@@ -3897,19 +4164,19 @@
     .dash-bar-row {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
       cursor: pointer;
-      padding: 4px 6px;
-      border-radius: 6px;
+      padding: 2px 4px;
+      border-radius: 5px;
       transition: background 0.15s;
     }
 
     .dash-bar-row:hover {
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--bg-surface-elevated);
     }
 
     .dash-bar-row:hover .dash-bar-fill {
-      filter: brightness(1.15);
+      filter: brightness(1.1);
     }
 
     .dash-bar-label-wrap {
@@ -3930,6 +4197,7 @@
 
     .dash-bar-count {
       font-family: monospace;
+      font-variant-numeric: tabular-nums;
       font-weight: 700;
       color: var(--text-main);
       font-size: 0.74rem;
@@ -3938,7 +4206,7 @@
     .dash-bar-track {
       width: 100%;
       height: 7px;
-      background: rgba(255, 255, 255, 0.07);
+      background: var(--bg-base);
       border-radius: 999px;
       overflow: hidden;
     }
@@ -3973,17 +4241,18 @@
       transition: background 0.15s, color 0.15s;
     }
     .dash-unscanned-footer:hover {
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--text-secondary);
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
     }
     .dash-unscanned-badge {
-      background: rgba(148, 163, 184, 0.12);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      color: var(--text-muted);
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
       padding: 1px 6px;
       border-radius: 12px;
       font-weight: 700;
       font-size: 0.67rem;
+      font-variant-numeric: tabular-nums;
     }
 
     /* Zone 4: Actionable Watchlist */
@@ -4040,16 +4309,16 @@
       align-items: center;
       padding: 6px 8px;
       border-radius: 6px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
       font-size: 0.73rem;
       cursor: pointer;
       transition: all 0.15s;
     }
 
     .dash-watchlist-item:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(2, 132, 199, 0.4);
+      background: var(--bg-input);
+      border-color: var(--accent-primary);
       transform: translateX(2px);
     }
 
@@ -4070,10 +4339,11 @@
       padding: 2px 6px;
       border-radius: 4px;
       font-family: monospace;
+      font-variant-numeric: tabular-nums;
     }
     .dash-wl-badge.red { background: rgba(244, 63, 94, 0.18); color: var(--accent-rose); }
     .dash-wl-badge.amber { background: rgba(245, 158, 11, 0.18); color: var(--accent-amber); }
-    .dash-wl-badge.purple { background: rgba(139, 92, 246, 0.18); color: #c4b5fd; }
+    .dash-wl-badge.purple { background: rgba(139, 92, 246, 0.18); color: #8b5cf6; }
 
     .dash-wl-empty {
       text-align: center;
@@ -4129,29 +4399,29 @@
   <header>
 
     <div class="brand-group">
-
-      <div class="brand-badge">
-
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-
+      <div class="brand-badge" title="FTI PC Inventory Tool">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L4 5.5v5.5c0 5.25 3.4 9.75 8 11 4.6-1.25 8-5.75 8-11V5.5L12 2z"/>
+          <rect x="8.5" y="8" width="7" height="5" rx="1"/>
+          <path d="M10.5 15.5h3"/>
+        </svg>
       </div>
-
-      <div class="brand-title">
-
-        <span>FTI PC Inventory Tool</span>
-
-        <span class="version-tag has-tooltip" data-tooltip="Build: 2026-11-14 11:32:32" id="appVersionTag">v2026.11.14.1 Enterprise</span>
-
+<div class="brand-stack">
+        <div class="brand-title">FTI PC Inventory Tool</div>
+        <div class="brand-subrow">
+          <span class="brand-subtitle-label">Asset Telemetry</span>
+          <span class="brand-subdot">&bull;</span>
+          <span class="version-tag has-tooltip" data-tooltip="Build: 2026-11-18 19:33:53" id="appVersionTag">v2026.11.18.2 Enterprise</span>
+        </div>
       </div>
-
+      <span class="brand-divider" aria-hidden="true"></span>
       <div class="admin-pill" id="adminPill">
-
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
         <span>Checking Admin...</span>
-
       </div>
-
     </div>
 
     <!-- Live Auto-Scan Countdown Banner in Top Header -->
@@ -4265,6 +4535,52 @@
                   <input type="text" id="txtListFile" placeholder="Select pcs.txt..." class="input-compact">
 
                   <button class="btn-browse" id="btnBrowseFile">Browse...</button>
+
+                </div>
+
+              </div>
+
+              <label class="compact-radio-card" id="lblSourceQuick">
+
+                <input type="radio" name="source" value="quick" id="rbQuick">
+
+                <span>⚡ Quick Targets (Host / IP / CIDR)</span>
+
+              </label>
+
+              <div id="boxQuickTargets" style="display: none;">
+
+                <div class="quick-targets-box">
+
+                  <div class="quick-chips-row" id="quickTargetChips"></div>
+
+                  <textarea id="txtQuickTargets" class="quick-targets-textarea" placeholder="PC-01, PC-02&#10;192.168.1.10-50&#10;192.168.10.0/24"></textarea>
+
+                  <div id="quickSaveRow" class="quick-save-row" style="display: none;">
+
+                    <input type="text" id="txtQuickPresetName" class="input-compact" placeholder="Preset name (e.g. IT Dept)..." style="flex: 1; font-size: 0.7rem; padding: 3px 6px;">
+
+                    <button type="button" class="btn-quick-mini" id="btnQuickSaveConfirm" style="border-color: var(--accent-primary); color: var(--accent-primary);">Save</button>
+
+                    <button type="button" class="btn-quick-mini" id="btnQuickSaveCancel">Cancel</button>
+
+                  </div>
+
+                  <div class="quick-targets-meta">
+
+                    <span class="quick-count-badge" id="lblQuickTargetCount">0 targets</span>
+
+                    <div class="quick-actions-row">
+
+                      <button type="button" class="btn-quick-mini" id="btnQuickFillOffline" title="Fill Offline or Unscanned PCs from Master DB / Latest Scan">Offline/Pending</button>
+
+                      <button type="button" class="btn-quick-mini" id="btnQuickSavePreset" title="Save current list as a reusable preset">+ Save</button>
+
+                      <button type="button" class="btn-quick-mini" id="btnQuickClear" title="Clear targets">Clear</button>
+
+                    </div>
+
+                  </div>
 
                 </div>
 
@@ -4659,13 +4975,6 @@
               </select>
             </div>
 
-                        <div style="display: flex; gap: 4px;" id="filterPillsHw">
-              <button class="filter-btn-pill active" data-filter="all">All</button>
-              <button class="filter-btn-pill" data-filter="OK">Success (OK)</button>
-              <button class="filter-btn-pill" data-filter="Offline">Offline</button>
-              <button class="filter-btn-pill" data-filter="Error">Failed</button>
-            </div>
-
             <div id="activeDrilldownChip" style="display: none; align-items: center; gap: 6px; background: rgba(2, 132, 199, 0.15); border: 1px solid rgba(2, 132, 199, 0.35); padding: 2px 10px; border-radius: 12px; font-size: 0.72rem; color: var(--accent-primary); font-weight: 600;">
               <span id="drilldownChipText">Filter: -</span>
               <button type="button" onclick="clearDrilldownFilter()" style="background: none; border: none; color: var(--accent-rose); cursor: pointer; font-size: 0.8rem; line-height: 1; padding: 0 2px;" title="Clear filter">✕</button>
@@ -4707,7 +5016,7 @@
 
               <tr>
 
-                <td colspan="13" style="text-align: center; color: var(--text-muted); padding: 35px;">
+                <td colspan="14" style="text-align: center; color: var(--text-muted); padding: 35px;">
 
                   No scan results available yet. (Click "Start Network Scan" on the left)
 
@@ -4748,10 +5057,15 @@
               <div class="dash-actions-group">
                 <!-- Global Dashboard Chart Preset Switcher -->
                 <div class="dash-chart-tools" id="globalChartTools" style="margin-right: 6px;">
-                  <button type="button" class="dash-chart-btn active" id="btnChartMode_bar" onclick="setGlobalChartType('bar')" title="Bar Charts (Default)">━</button>
-                  <button type="button" class="dash-chart-btn" id="btnChartMode_donut" onclick="setGlobalChartType('donut')" title="Donut Charts">◕</button>
-                  <button type="button" class="dash-chart-btn" id="btnChartMode_col" onclick="setGlobalChartType('col')" title="Vertical Column Charts">📊</button>
-                  <button type="button" class="dash-chart-btn" id="btnChartMode_treemap" onclick="setGlobalChartType('treemap')" title="Proportional Treemap">⊞</button>
+                  <button type="button" class="dash-chart-btn active" id="btnChartMode_bar" onclick="setGlobalChartType('bar')" title="Horizontal Bar Charts (Default)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="15" y2="12"/><line x1="4" y1="17" x2="11" y2="17"/></svg>
+                  </button>
+                  <button type="button" class="dash-chart-btn" id="btnChartMode_donut" onclick="setGlobalChartType('donut')" title="Donut Charts">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                  <button type="button" class="dash-chart-btn" id="btnChartMode_heatmap" onclick="setGlobalChartType('heatmap')" title="Color Heatmap Matrix">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor" fill-opacity="0.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor" fill-opacity="0.3"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor" fill-opacity="0.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor" fill-opacity="0.95"/></svg>
+                  </button>
                 </div>
                 <button type="button" class="btn-compact-ghost" onclick="renderDashboard()" title="Refresh Dashboard Metrics">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -4852,8 +5166,8 @@
                     <span class="dash-card-title">Processor (CPU) Breakdown</span>
                   </div>
                   <div class="dash-seg-toggle">
-                    <button type="button" id="btnCpuModeModel" class="dash-seg-btn active" onclick="setCpuViewMode('model')">Exact Model</button>
-                    <button type="button" id="btnCpuModeSeries" class="dash-seg-btn" onclick="setCpuViewMode('series')">Series</button>
+                    <button type="button" id="btnCpuModeSeries" class="dash-seg-btn active" onclick="setCpuViewMode('series')">Series</button>
+                    <button type="button" id="btnCpuModeModel" class="dash-seg-btn" onclick="setCpuViewMode('model')">Exact Model</button>
                   </div>
                   <div class="dash-chart-tools" id="chartTools_cpu"></div>
                 </div>
@@ -5497,6 +5811,25 @@
 
   <script>
 
+    // Per-session API token & fetch wrapper for CSRF/token protection
+    const _metaTokenEl = document.querySelector('meta[name="fti-api-token"]');
+    const FTI_API_TOKEN = (_metaTokenEl && _metaTokenEl.getAttribute('content')) || '';
+    if (typeof window.fetch === 'function' && FTI_API_TOKEN) {
+      const _origFetch = window.fetch.bind(window);
+      window.fetch = function(input, init) {
+        const url = typeof input === 'string' ? input : (input && typeof input.url === 'string' ? input.url : '');
+        const isApiCall = url.indexOf('/api/') === 0 || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/api\//i.test(url);
+        if (isApiCall) {
+          const opts = Object.assign({}, init || {});
+          const hdrs = new Headers(opts.headers || (input instanceof Request ? input.headers : undefined));
+          hdrs.set('X-FTI-Token', FTI_API_TOKEN);
+          opts.headers = hdrs;
+          return _origFetch(input, opts);
+        }
+        return _origFetch(input, init);
+      };
+    }
+
     // State Variables
 
     let isScanning = false;
@@ -5520,7 +5853,14 @@
     let cardChartTypes = { cpu: 'bar', ram: 'bar', os: 'bar', brand: 'bar', office: 'bar', net: 'bar' };
     try {
       const savedTypes = localStorage.getItem('fti_chart_types');
-      if (savedTypes) cardChartTypes = Object.assign(cardChartTypes, JSON.parse(savedTypes));
+      if (savedTypes) {
+        const parsed = JSON.parse(savedTypes);
+        Object.keys(parsed).forEach(k => {
+          if (parsed[k] === 'col') parsed[k] = 'bar';
+          if (parsed[k] === 'treemap') parsed[k] = 'heatmap';
+        });
+        cardChartTypes = Object.assign(cardChartTypes, parsed);
+      }
     } catch (e) {}
 
     function escapeHtml(str) {
@@ -5534,7 +5874,7 @@
     }
 
     // Analytics Dashboard State
-    let cpuViewMode = 'model'; // 'model' | 'series'
+    let cpuViewMode = 'series'; // 'series' | 'model'
     let osViewMode = 'ver';   // 'ver' | 'build'
     let netViewMode = 'ou';   // 'ou' | 'subnet'
     let activeDrilldownCategory = null;
@@ -5547,7 +5887,6 @@
       const tblHw = document.getElementById('resultsTable');
       const tblSw = document.getElementById('swResultsTable');
       const dashContainer = document.getElementById('dashboardContainer');
-      const filterPillsHw = document.getElementById('filterPillsHw');
       const btnResetColWidths = document.getElementById('btnResetColWidths');
       const btnPrintDashboard = document.getElementById('btnPrintDashboard');
       const txtSearchTable = document.getElementById('txtSearchTable');
@@ -5559,7 +5898,6 @@
         if (tblHw) tblHw.style.display = '';
         if (tblSw) tblSw.style.display = 'none';
         if (dashContainer) dashContainer.style.display = 'none';
-        if (filterPillsHw) filterPillsHw.style.display = 'flex';
         if (btnResetColWidths) btnResetColWidths.style.display = 'inline-flex';
         if (btnPrintDashboard) btnPrintDashboard.style.display = 'none';
         if (txtSearchTable) txtSearchTable.style.display = '';
@@ -5572,7 +5910,6 @@
         if (tblHw) tblHw.style.display = 'none';
         if (tblSw) tblSw.style.display = '';
         if (dashContainer) dashContainer.style.display = 'none';
-        if (filterPillsHw) filterPillsHw.style.display = 'none';
         if (btnResetColWidths) btnResetColWidths.style.display = 'inline-flex';
         if (btnPrintDashboard) btnPrintDashboard.style.display = 'none';
         if (txtSearchTable) txtSearchTable.style.display = '';
@@ -5585,7 +5922,6 @@
         if (tblHw) tblHw.style.display = 'none';
         if (tblSw) tblSw.style.display = 'none';
         if (dashContainer) dashContainer.style.display = 'block';
-        if (filterPillsHw) filterPillsHw.style.display = 'none';
         if (btnResetColWidths) btnResetColWidths.style.display = 'none';
         if (btnPrintDashboard) btnPrintDashboard.style.display = 'inline-flex';
         renderDashboard();
@@ -5618,6 +5954,44 @@
       }
     }
 
+    function updateKpiVal(el, val, type) {
+      if (!el) return;
+      const num = parseInt(val) || 0;
+      el.innerText = num;
+      el.classList.toggle('has-val', num > 0);
+      if (type === 'ok') el.classList.toggle('has-ok', num > 0);
+      if (type === 'offline') el.classList.toggle('has-offline', num > 0);
+      if (type === 'error') el.classList.toggle('has-error', num > 0);
+    }
+
+    function syncTopStripKpis(serverData) {
+      const serverActive = serverData ? !!serverData.isScanning : isScanning;
+      if (activeDataSource === 'master' && !serverActive && !isScanning) {
+        const list = masterHwPCs || [];
+        const okCnt = list.filter(p => p.Status === 'OK' || p.Status === 'Online').length;
+        const offCnt = list.filter(p => p.Status && p.Status.includes('Offline')).length;
+        const errCnt = list.filter(p => p.Status && p.Status.includes('Error')).length;
+        updateKpiVal(statTotal, list.length, 'total');
+        updateKpiVal(statOk, okCnt, 'ok');
+        updateKpiVal(statOffline, offCnt, 'offline');
+        updateKpiVal(statError, errCnt, 'error');
+      } else if (serverData) {
+        updateKpiVal(statTotal, serverData.total, 'total');
+        updateKpiVal(statOk, serverData.ok, 'ok');
+        updateKpiVal(statOffline, serverData.offline, 'offline');
+        updateKpiVal(statError, serverData.error, 'error');
+      } else {
+        const list = allScannedPCs || [];
+        const okCnt = list.filter(p => p.Status === 'OK' || p.Status === 'Online').length;
+        const offCnt = list.filter(p => p.Status && p.Status.includes('Offline')).length;
+        const errCnt = list.filter(p => p.Status && p.Status.includes('Error')).length;
+        updateKpiVal(statTotal, list.length, 'total');
+        updateKpiVal(statOk, okCnt, 'ok');
+        updateKpiVal(statOffline, offCnt, 'offline');
+        updateKpiVal(statError, errCnt, 'error');
+      }
+    }
+
     // --- Data Source Switching Engine ---
     function setDataSource(source) {
       activeDataSource = source;
@@ -5634,6 +6008,8 @@
       if (source === 'master' && masterHwPCs.length === 0) {
         fetchMasterStatus();
       }
+
+      syncTopStripKpis();
 
       if (activeGridTab === 'hardware') {
         renderTable();
@@ -5953,22 +6329,12 @@
         return 'Build - (' + os + ')';
       }
 
-      // Mode: 'ver' (Version Name with Build reference)
-      if (o.includes('server')) return b > 0 ? 'Windows Server (Build ' + displayBuild + ')' : 'Windows Server';
-      if (o.includes('windows 11') || b >= 22000) {
-        if (b >= 26300) return 'Windows 11 (26H2 • Build ' + (displayBuild || '26300+') + ')';
-        if (b >= 26100) return 'Windows 11 (24H2 • Build ' + (displayBuild || '26100+') + ')';
-        if (b >= 22631) return 'Windows 11 (23H2 • Build ' + (displayBuild || '22631') + ')';
-        if (b >= 22621) return 'Windows 11 (22H2 • Build ' + (displayBuild || '22621') + ')';
-        return 'Windows 11 (Build ' + (displayBuild || '22000') + ')';
-      }
-      if (o.includes('windows 10') || (b >= 10240 && b < 22000)) {
-        if (b >= 19045) return 'Windows 10 (22H2 • Build ' + (displayBuild || '19045') + ')';
-        if (b >= 19044) return 'Windows 10 (21H2 • Build ' + (displayBuild || '19044') + ')';
-        return 'Windows 10 (Build ' + (displayBuild || '10240') + ')';
-      }
-      if (o.includes('windows 7') || o.includes('windows 8')) return 'Legacy Windows (Build ' + (displayBuild || '7/8') + ')';
-      return b > 0 ? os + ' (Build ' + displayBuild + ')' : os;
+      // Mode: 'ver' (Broad OS Family for clean executive summary; switch to 'build' for exact build details)
+      if (o.includes('server')) return 'Windows Server';
+      if (o.includes('windows 11') || b >= 22000) return 'Windows 11';
+      if (o.includes('windows 10') || (b >= 10240 && b < 22000)) return 'Windows 10';
+      if (o.includes('windows 7') || o.includes('windows 8')) return 'Legacy Windows';
+      return os.trim();
     }
 
     function classifyBrand(maker) {
@@ -6051,7 +6417,7 @@
           const pct = Math.round((count / total) * 100);
           const barWidth = Math.max(3, Math.round((count / maxVal) * 100));
           return `
-            <div class="dash-bar-row" onclick="applyDashboardDrilldown('${drilldownType}', '${escapeHtml(name)}', '${escapeHtml(name)}')">
+            <div class="dash-bar-row" data-drill-type="${escapeHtml(drilldownType)}" data-drill-val="${escapeHtml(name)}" data-drill-label="${escapeHtml(name)}">
               <div class="dash-bar-label-wrap">
                 <span class="dash-bar-label" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
                 <span class="dash-bar-count">${count} <span style="font-weight:400; color:var(--text-muted); font-size:0.68rem;">(${pct}%)</span></span>
@@ -6067,7 +6433,7 @@
       let footerHtml = '';
       if (unscannedCount > 0) {
         footerHtml = `
-          <div class="dash-unscanned-footer" onclick="applyDashboardDrilldown('${drilldownType}', '__UNSCANNED__', 'Not Scanned / Spec Missing')" title="Click to view PCs requiring scan">
+          <div class="dash-unscanned-footer" data-drill-type="${escapeHtml(drilldownType)}" data-drill-val="__UNSCANNED__" data-drill-label="Not Scanned / Spec Missing" title="Click to view PCs requiring scan">
             <span><span style="opacity:0.7;">⚠️</span> Not Scanned / Spec Missing</span>
             <span class="dash-unscanned-badge">${unscannedCount} PCs</span>
           </div>
@@ -6105,9 +6471,9 @@
               style="cursor:pointer; transition:stroke-width 0.2s ease, opacity 0.2s ease;"
               onmouseover="this.style.strokeWidth='28'; this.style.opacity='0.9';"
               onmouseout="this.style.strokeWidth='24'; this.style.opacity='1';"
-              onclick="applyDashboardDrilldown('${drilldownType}', '${escapeHtml(name)}', '${escapeHtml(name)}')"
+              data-drill-type="${escapeHtml(drilldownType)}" data-drill-val="${escapeHtml(name)}" data-drill-label="${escapeHtml(name)}"
             >
-              <title>FTI PC Inventory Tool - v2026.11.14.1</title>
+<title>${escapeHtml(name)}: ${count} (${Math.round(pct * 100)}%)</title>
             </circle>
           `;
         }).join('');
@@ -6116,7 +6482,7 @@
           const pct = Math.round((count / total) * 100);
           const color = palette[idx % palette.length];
           return `
-            <div class="dash-donut-legend-item" onclick="applyDashboardDrilldown('${drilldownType}', '${escapeHtml(name)}', '${escapeHtml(name)}')" title="${escapeHtml(name)}">
+            <div class="dash-donut-legend-item" data-drill-type="${escapeHtml(drilldownType)}" data-drill-val="${escapeHtml(name)}" data-drill-label="${escapeHtml(name)}" title="${escapeHtml(name)}">
               <span class="dash-donut-legend-dot" style="background:${color};"></span>
               <span class="dash-donut-legend-label">${escapeHtml(name)}</span>
               <span class="dash-donut-legend-val">${count} (${pct}%)</span>
@@ -6127,8 +6493,8 @@
         chartBody = `
           <div class="dash-donut-wrap">
             <div class="dash-donut-svg-box">
-              <svg width="160" height="160" viewBox="0 0 160 160" style="transform: rotate(-90deg); filter: drop-shadow(0 2px 8px rgba(0,0,0,0.15));">
-                <circle r="${radius}" cx="80" cy="80" fill="transparent" stroke="var(--bg-track)" stroke-width="24" />
+              <svg width="112" height="112" viewBox="0 0 160 160" style="transform: rotate(-90deg); filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12));">
+                <circle r="${radius}" cx="80" cy="80" fill="transparent" stroke="var(--border-subtle)" stroke-width="24" />
                 ${svgSlices}
               </svg>
               <div class="dash-donut-center">
@@ -6146,7 +6512,7 @@
       let footerHtml = '';
       if (unscannedCount > 0) {
         footerHtml = `
-          <div class="dash-unscanned-footer" onclick="applyDashboardDrilldown('${drilldownType}', '__UNSCANNED__', 'Not Scanned / Spec Missing')" title="Click to view PCs requiring scan">
+          <div class="dash-unscanned-footer" data-drill-type="${escapeHtml(drilldownType)}" data-drill-val="__UNSCANNED__" data-drill-label="Not Scanned / Spec Missing" title="Click to view PCs requiring scan">
             <span><span style="opacity:0.7;">⚠️</span> Not Scanned / Spec Missing</span>
             <span class="dash-unscanned-badge">${unscannedCount} PCs</span>
           </div>
@@ -6156,54 +6522,24 @@
       el.innerHTML = chartBody + footerHtml;
     }
 
-    function renderColumnChart(containerId, mapData, drilldownType, palette) {
-      const el = document.getElementById(containerId);
-      if (!el) return;
-      const unscannedCount = mapData['__UNSCANNED__'] || 0;
-      const entries = Object.entries(mapData).filter(([k]) => k !== '__UNSCANNED__').sort((a, b) => b[1] - a[1]).slice(0, 8);
-      const total = entries.reduce((acc, curr) => acc + curr[1], 0) || 1;
-      const maxVal = entries.length > 0 ? entries[0][1] : 1;
+    const HEATMAP_COLORS = [
+      { hex: '#0284c7', rgb: '2, 132, 199' },    // Sky / Ocean Blue
+      { hex: '#10b981', rgb: '16, 185, 129' },   // Emerald Green
+      { hex: '#8b5cf6', rgb: '139, 92, 246' },   // Violet Purple
+      { hex: '#f59e0b', rgb: '245, 158, 11' },   // Amber Orange
+      { hex: '#06b6d4', rgb: '6, 182, 212' },    // Bright Cyan
+      { hex: '#f43f5e', rgb: '244, 63, 94' },    // Rose Red
+      { hex: '#6366f1', rgb: '99, 102, 241' },   // Indigo
+      { hex: '#14b8a6', rgb: '20, 184, 166' }    // Teal
+    ];
 
-      let colsContent = '';
-      if (entries.length === 0) {
-        colsContent = '<div style="color:var(--text-muted); font-size:0.75rem; text-align:center; padding:18px;">No scanned spec data available</div>';
-      } else {
-        const colsHtml = entries.map(([name, count], idx) => {
-          const pct = Math.round((count / total) * 100);
-          const heightPct = Math.max(8, Math.round((count / maxVal) * 100));
-          const color = palette[idx % palette.length];
-          return `
-            <div class="dash-col-item" onclick="applyDashboardDrilldown('${drilldownType}', '${escapeHtml(name)}', '${escapeHtml(name)}')" title="${escapeHtml(name)}: ${count} (${pct}%)">
-              <span class="dash-col-val">${count}</span>
-              <div class="dash-col-bar-wrap">
-                <div class="dash-col-fill" style="height:${heightPct}%; background:${color};"></div>
-              </div>
-              <span class="dash-col-label" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
-            </div>
-          `;
-        }).join('');
-        colsContent = `<div class="dash-col-chart">${colsHtml}</div>`;
-      }
-
-      let footerHtml = '';
-      if (unscannedCount > 0) {
-        footerHtml = `
-          <div class="dash-unscanned-footer" onclick="applyDashboardDrilldown('${drilldownType}', '__UNSCANNED__', 'Not Scanned / Spec Missing')" title="Click to view PCs requiring scan">
-            <span><span style="opacity:0.7;">⚠️</span> Not Scanned / Spec Missing</span>
-            <span class="dash-unscanned-badge">${unscannedCount} PCs</span>
-          </div>
-        `;
-      }
-
-      el.innerHTML = colsContent + footerHtml;
-    }
-
-    function renderTreemapGrid(containerId, mapData, drilldownType, palette) {
+    function renderHeatmapGrid(containerId, mapData, drilldownType, palette) {
       const el = document.getElementById(containerId);
       if (!el) return;
       const unscannedCount = mapData['__UNSCANNED__'] || 0;
       const entries = Object.entries(mapData).filter(([k]) => k !== '__UNSCANNED__').sort((a, b) => b[1] - a[1]);
       const total = entries.reduce((acc, curr) => acc + curr[1], 0) || 1;
+      const maxVal = entries.length > 0 ? entries[0][1] : 1;
 
       let gridContent = '';
       if (entries.length === 0) {
@@ -6211,26 +6547,39 @@
       } else {
         const tilesHtml = entries.map(([name, count], idx) => {
           const pct = Math.round((count / total) * 100);
-          const color = palette[idx % palette.length];
-          const weight = Math.max(1, count);
+          const colorObj = HEATMAP_COLORS[idx % HEATMAP_COLORS.length];
+          const intensity = Math.max(0.18, Math.min(1, count / maxVal));
+          const bgAlpha1 = (0.08 + intensity * 0.16).toFixed(2);
+          const bgAlpha2 = (0.16 + intensity * 0.28).toFixed(2);
+          const borderAlpha = (0.35 + intensity * 0.45).toFixed(2);
+          const shadowAlpha = (0.10 + intensity * 0.22).toFixed(2);
+
           return `
-            <div class="dash-treemap-tile" style="flex: ${weight} 1 ${Math.min(180, Math.max(85, count * 18))}px; border-left: 4px solid ${color};"
-              onclick="applyDashboardDrilldown('${drilldownType}', '${escapeHtml(name)}', '${escapeHtml(name)}')" title="${escapeHtml(name)}: ${count} (${pct}%)">
-              <div class="dash-treemap-tile-header">
-                <span class="dash-treemap-name">${escapeHtml(name)}</span>
-                <span class="dash-treemap-pct" style="color:${color};">${pct}%</span>
+            <div class="dash-heatmap-tile" style="
+                background: linear-gradient(135deg, rgba(${colorObj.rgb}, ${bgAlpha1}), rgba(${colorObj.rgb}, ${bgAlpha2}));
+                border: 1px solid rgba(${colorObj.rgb}, ${borderAlpha});
+                box-shadow: 0 2px 6px rgba(${colorObj.rgb}, ${shadowAlpha});"
+              data-drill-type="${escapeHtml(drilldownType)}" data-drill-val="${escapeHtml(name)}" data-drill-label="${escapeHtml(name)}" title="${escapeHtml(name)}: ${count} (${pct}%)">
+              <div class="dash-heatmap-tile-header">
+                <span class="dash-heatmap-name">${escapeHtml(name)}</span>
+                <span class="dash-heatmap-pct" style="background: rgba(${colorObj.rgb}, 0.22); color: ${colorObj.hex}; border: 1px solid rgba(${colorObj.rgb}, 0.45);">${pct}%</span>
               </div>
-              <div class="dash-treemap-count">${count} PCs</div>
+              <div class="dash-heatmap-body">
+                <span class="dash-heatmap-count">${count}<span class="dash-heatmap-unit">PCs</span></span>
+              </div>
+              <div class="dash-heatmap-track">
+                <div class="dash-heatmap-fill" style="width: ${pct}%; background: ${colorObj.hex};"></div>
+              </div>
             </div>
           `;
         }).join('');
-        gridContent = `<div class="dash-treemap-grid">${tilesHtml}</div>`;
+        gridContent = `<div class="dash-heatmap-grid">${tilesHtml}</div>`;
       }
 
       let footerHtml = '';
       if (unscannedCount > 0) {
         footerHtml = `
-          <div class="dash-unscanned-footer" onclick="applyDashboardDrilldown('${drilldownType}', '__UNSCANNED__', 'Not Scanned / Spec Missing')" title="Click to view PCs requiring scan">
+          <div class="dash-unscanned-footer" data-drill-type="${escapeHtml(drilldownType)}" data-drill-val="__UNSCANNED__" data-drill-label="Not Scanned / Spec Missing" title="Click to view PCs requiring scan">
             <span><span style="opacity:0.7;">⚠️</span> Not Scanned / Spec Missing</span>
             <span class="dash-unscanned-badge">${unscannedCount} PCs</span>
           </div>
@@ -6241,12 +6590,13 @@
     }
 
     function getChartToolsHtml(cardKey) {
-      const currentType = cardChartTypes[cardKey] || 'bar';
+      let currentType = cardChartTypes[cardKey] || 'bar';
+      if (currentType === 'col') currentType = 'bar';
+      if (currentType === 'treemap') currentType = 'heatmap';
       const types = [
-        { key: 'bar', icon: '━', title: 'Bar Chart' },
-        { key: 'donut', icon: '◕', title: 'Donut Chart' },
-        { key: 'col', icon: '📊', title: 'Column Chart' },
-        { key: 'treemap', icon: '⊞', title: 'Treemap Grid' }
+        { key: 'bar', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="15" y2="12"/><line x1="4" y1="17" x2="11" y2="17"/></svg>', title: 'Horizontal Bar' },
+        { key: 'donut', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>', title: 'Donut Chart' },
+        { key: 'heatmap', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor" fill-opacity="0.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor" fill-opacity="0.3"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor" fill-opacity="0.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor" fill-opacity="0.95"/></svg>', title: 'Color Heatmap' }
       ];
       return types.map(t => `
         <button type="button" class="dash-chart-btn ${currentType === t.key ? 'active' : ''}"
@@ -6262,25 +6612,30 @@
         const box = document.getElementById('chartTools_' + card);
         if (box) box.innerHTML = getChartToolsHtml(card);
       });
-      const gTypes = ['bar', 'donut', 'col', 'treemap'];
+      const gTypes = ['bar', 'donut', 'heatmap'];
       gTypes.forEach(t => {
         const btn = document.getElementById('btnChartMode_' + t);
         if (btn) {
-          const allSame = cards.every(c => (cardChartTypes[c] || 'bar') === t);
+          const allSame = cards.every(c => {
+            let ct = cardChartTypes[c] || 'bar';
+            if (ct === 'col') ct = 'bar';
+            if (ct === 'treemap') ct = 'heatmap';
+            return ct === t;
+          });
           btn.classList.toggle('active', allSame);
         }
       });
     }
 
     function renderCardChart(cardKey, containerId, mapData, drilldownType, gradientClass) {
-      const chartType = cardChartTypes[cardKey] || 'bar';
+      let chartType = cardChartTypes[cardKey] || 'bar';
+      if (chartType === 'col') chartType = 'bar';
+      if (chartType === 'treemap') chartType = 'heatmap';
       const palette = CARD_PALETTES[cardKey] || CARD_PALETTES.cpu;
       if (chartType === 'donut') {
         renderDonutChart(containerId, mapData, drilldownType, palette);
-      } else if (chartType === 'col') {
-        renderColumnChart(containerId, mapData, drilldownType, palette);
-      } else if (chartType === 'treemap') {
-        renderTreemapGrid(containerId, mapData, drilldownType, palette);
+      } else if (chartType === 'heatmap') {
+        renderHeatmapGrid(containerId, mapData, drilldownType, palette);
       } else {
         renderBarGroup(containerId, mapData, drilldownType, gradientClass);
       }
@@ -6478,7 +6833,7 @@
           return;
         }
         el.innerHTML = items.slice(0, 8).map(it => `
-          <div class="dash-watchlist-item" onclick="applyDashboardDrilldown('${drilldownType}', 'true', '${escapeHtml(it.pc)}')">
+          <div class="dash-watchlist-item" data-drill-type="${escapeHtml(drilldownType)}" data-drill-val="true" data-drill-label="${escapeHtml(it.pc)}">
             <div>
               <span class="dash-wl-pc">${escapeHtml(it.pc)}</span>
               <span class="dash-wl-sub">${escapeHtml(it.user || '-')}</span>
@@ -6604,6 +6959,36 @@
 
     const btnRetryOffline = document.getElementById('btnRetryOffline');
 
+    const btnRunDemo = document.getElementById('btnRunDemo');
+
+    const dashboardContainerEl = document.getElementById('dashboardContainer');
+    if (dashboardContainerEl) {
+      dashboardContainerEl.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-drill-type]');
+        if (!target) return;
+        const type = target.getAttribute('data-drill-type');
+        const val = target.getAttribute('data-drill-val');
+        const label = target.getAttribute('data-drill-label');
+        applyDashboardDrilldown(type, val, label);
+      });
+    }
+
+    const swTableBodyEl = document.getElementById('swTableBody');
+    if (swTableBodyEl) {
+      swTableBodyEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-view-sw[data-pc-name]');
+        if (btn) {
+          e.stopPropagation();
+          openPcSoftwareModal(btn.getAttribute('data-pc-name'));
+          return;
+        }
+        const row = e.target.closest('tr.sw-row-clickable[data-pc-name]');
+        if (row) {
+          openPcSoftwareModal(row.getAttribute('data-pc-name'));
+        }
+      });
+    }
+
     const badgeOfflineCount = document.getElementById('badgeOfflineCount');
 
     const statTotal = document.getElementById('statTotal');
@@ -6678,15 +7063,41 @@
 
     const rbFile = document.getElementById('rbFile');
 
+    const rbQuick = document.getElementById('rbQuick');
+
     const lblSourceLocal = document.getElementById('lblSourceLocal');
 
     const lblSourceAD = document.getElementById('lblSourceAD');
 
     const lblSourceFile = document.getElementById('lblSourceFile');
 
+    const lblSourceQuick = document.getElementById('lblSourceQuick');
+
     const boxAdDays = document.getElementById('boxAdDays');
 
     const boxListFile = document.getElementById('boxListFile');
+
+    const boxQuickTargets = document.getElementById('boxQuickTargets');
+
+    const txtQuickTargets = document.getElementById('txtQuickTargets');
+
+    const lblQuickTargetCount = document.getElementById('lblQuickTargetCount');
+
+    const quickTargetChips = document.getElementById('quickTargetChips');
+
+    const quickSaveRow = document.getElementById('quickSaveRow');
+
+    const txtQuickPresetName = document.getElementById('txtQuickPresetName');
+
+    const btnQuickSaveConfirm = document.getElementById('btnQuickSaveConfirm');
+
+    const btnQuickSaveCancel = document.getElementById('btnQuickSaveCancel');
+
+    const btnQuickFillOffline = document.getElementById('btnQuickFillOffline');
+
+    const btnQuickSavePreset = document.getElementById('btnQuickSavePreset');
+
+    const btnQuickClear = document.getElementById('btnQuickClear');
 
     const txtListFile = document.getElementById('txtListFile');
 
@@ -6836,9 +7247,13 @@
 
       lblSourceFile.classList.toggle('active', rbFile.checked);
 
+      if (lblSourceQuick && rbQuick) lblSourceQuick.classList.toggle('active', rbQuick.checked);
+
       boxAdDays.style.display = rbAD.checked ? 'block' : 'none';
 
       boxListFile.style.display = rbFile.checked ? 'block' : 'none';
+
+      if (boxQuickTargets && rbQuick) boxQuickTargets.style.display = rbQuick.checked ? 'block' : 'none';
 
     }
 
@@ -6847,6 +7262,274 @@
     rbAD.addEventListener('change', updateSourceUI);
 
     rbFile.addEventListener('change', updateSourceUI);
+
+    if (rbQuick) rbQuick.addEventListener('change', updateSourceUI);
+
+    // --- Quick Targets Parser & Presets Engine ---
+    const QUICK_MAX_EXPAND = 1024;
+
+    function ipToInt(ip) {
+      const parts = ip.split('.').map(Number);
+      if (parts.length !== 4 || parts.some(n => !Number.isInteger(n) || n < 0 || n > 255)) return null;
+      return (((parts[0] << 24) >>> 0) + ((parts[1] << 16) >>> 0) + ((parts[2] << 8) >>> 0) + parts[3]) >>> 0;
+    }
+
+    function intToIp(num) {
+      return [(num >>> 24) & 255, (num >>> 16) & 255, (num >>> 8) & 255, num & 255].join('.');
+    }
+
+    function parseQuickTargets(rawText) {
+      const tokens = (rawText || '').split(/[\s,;]+/).map(t => t.trim()).filter(Boolean);
+      const targets = [];
+      const seen = new Set();
+      const invalidTokens = [];
+      let capped = false;
+
+      const addTarget = (val) => {
+        const key = val.toUpperCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          targets.push(val);
+        }
+      };
+
+      for (const tok of tokens) {
+        if (tok.includes('/')) {
+          const [ipStr, prefixStr] = tok.split('/');
+          const prefix = Number(prefixStr);
+          const baseInt = ipToInt(ipStr);
+          if (baseInt === null || !Number.isInteger(prefix) || prefix < 16 || prefix > 32) {
+            invalidTokens.push(tok);
+            continue;
+          }
+          const mask = prefix === 0 ? 0 : ((0xFFFFFFFF << (32 - prefix)) >>> 0);
+          const netInt = (baseInt & mask) >>> 0;
+          const bcastInt = (netInt | (~mask >>> 0)) >>> 0;
+          const startInt = prefix <= 30 ? netInt + 1 : netInt;
+          const endInt = prefix <= 30 ? bcastInt - 1 : bcastInt;
+          let count = 0;
+          for (let cur = startInt; cur <= endInt; cur++) {
+            if (count >= QUICK_MAX_EXPAND) { capped = true; break; }
+            addTarget(intToIp(cur >>> 0));
+            count++;
+          }
+          continue;
+        }
+
+        const fullRangeMatch = tok.match(/^(\d{1,3}(?:\.\d{1,3}){3})-(\d{1,3}(?:\.\d{1,3}){3})$/);
+        if (fullRangeMatch) {
+          const sInt = ipToInt(fullRangeMatch[1]);
+          const eInt = ipToInt(fullRangeMatch[2]);
+          if (sInt === null || eInt === null || sInt > eInt) {
+            invalidTokens.push(tok);
+            continue;
+          }
+          let count = 0;
+          for (let cur = sInt; cur <= eInt; cur++) {
+            if (count >= QUICK_MAX_EXPAND) { capped = true; break; }
+            addTarget(intToIp(cur >>> 0));
+            count++;
+          }
+          continue;
+        }
+
+        const shortRangeMatch = tok.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3})\.(\d{1,3})-(\d{1,3})$/);
+        if (shortRangeMatch) {
+          const prefixIp = shortRangeMatch[1];
+          const sOct = Number(shortRangeMatch[2]);
+          const eOct = Number(shortRangeMatch[3]);
+          const baseCheck = ipToInt(`${prefixIp}.0`);
+          if (baseCheck === null || sOct < 0 || sOct > 255 || eOct < 0 || eOct > 255 || sOct > eOct) {
+            invalidTokens.push(tok);
+            continue;
+          }
+          for (let oct = sOct; oct <= eOct; oct++) {
+            addTarget(`${prefixIp}.${oct}`);
+          }
+          continue;
+        }
+
+        if (/^\d+\.\d+\.\d+\.\d+$/.test(tok)) {
+          if (ipToInt(tok) !== null) addTarget(tok);
+          else invalidTokens.push(tok);
+          continue;
+        }
+
+        if (/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,251}[a-zA-Z0-9]?$/.test(tok)) {
+          addTarget(tok);
+        } else {
+          invalidTokens.push(tok);
+        }
+      }
+
+      return { targets, invalidTokens, capped };
+    }
+
+    function updateQuickTargetsPreview() {
+      if (!txtQuickTargets || !lblQuickTargetCount) return;
+      const { targets, invalidTokens, capped } = parseQuickTargets(txtQuickTargets.value);
+      let label = `${targets.length} target${targets.length === 1 ? '' : 's'}`;
+      if (capped) label += ' (capped)';
+      if (invalidTokens.length > 0) label += ` · ${invalidTokens.length} invalid`;
+      lblQuickTargetCount.textContent = label;
+      lblQuickTargetCount.classList.toggle('warn', capped || invalidTokens.length > 0);
+    }
+
+    function loadQuickStorage(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveQuickStorage(key, arr) {
+      try {
+        localStorage.setItem(key, JSON.stringify(arr));
+      } catch (e) {}
+    }
+
+    function saveQuickRecent(rawText) {
+      const cleaned = (rawText || '').trim();
+      if (!cleaned) return;
+      const { targets } = parseQuickTargets(cleaned);
+      if (targets.length === 0) return;
+      const label = targets.length === 1 ? targets[0] : `${targets[0]} (+${targets.length - 1})`;
+      let recent = loadQuickStorage('fti_quick_recent').filter(r => r.raw !== cleaned);
+      recent.unshift({ name: label, raw: cleaned });
+      if (recent.length > 3) recent = recent.slice(0, 3);
+      saveQuickStorage('fti_quick_recent', recent);
+      renderQuickTargetChips();
+    }
+
+    function renderQuickTargetChips() {
+      if (!quickTargetChips) return;
+      const presets = loadQuickStorage('fti_quick_presets');
+      const recent = loadQuickStorage('fti_quick_recent');
+      let html = '';
+
+      presets.forEach((p, idx) => {
+        html += `
+          <span class="quick-chip" data-kind="preset" data-idx="${idx}" title="Preset: ${escapeHtml(p.raw)}">
+            <span class="quick-chip-label">★ ${escapeHtml(p.name)}</span>
+            <span class="quick-chip-del" data-del-preset="${idx}" title="Delete preset">&times;</span>
+          </span>
+        `;
+      });
+
+      recent.forEach((r, idx) => {
+        html += `
+          <span class="quick-chip recent" data-kind="recent" data-idx="${idx}" title="Recent: ${escapeHtml(r.raw)}">
+            <span class="quick-chip-label">↺ ${escapeHtml(r.name)}</span>
+          </span>
+        `;
+      });
+
+      quickTargetChips.innerHTML = html;
+    }
+
+    if (quickTargetChips) {
+      quickTargetChips.addEventListener('click', (e) => {
+        const delBtn = e.target.closest('[data-del-preset]');
+        if (delBtn) {
+          e.stopPropagation();
+          const idx = Number(delBtn.getAttribute('data-del-preset'));
+          const presets = loadQuickStorage('fti_quick_presets');
+          presets.splice(idx, 1);
+          saveQuickStorage('fti_quick_presets', presets);
+          renderQuickTargetChips();
+          return;
+        }
+        const chip = e.target.closest('.quick-chip');
+        if (!chip) return;
+        const kind = chip.getAttribute('data-kind');
+        const idx = Number(chip.getAttribute('data-idx'));
+        const list = loadQuickStorage(kind === 'preset' ? 'fti_quick_presets' : 'fti_quick_recent');
+        if (list[idx] && txtQuickTargets) {
+          txtQuickTargets.value = list[idx].raw;
+          if (rbQuick) rbQuick.checked = true;
+          updateSourceUI();
+          updateQuickTargetsPreview();
+        }
+      });
+    }
+
+    if (txtQuickTargets) {
+      txtQuickTargets.addEventListener('input', updateQuickTargetsPreview);
+    }
+
+    if (btnQuickClear) {
+      btnQuickClear.addEventListener('click', () => {
+        if (txtQuickTargets) txtQuickTargets.value = '';
+        updateQuickTargetsPreview();
+      });
+    }
+
+    if (btnQuickFillOffline) {
+      btnQuickFillOffline.addEventListener('click', () => {
+        const pool = (masterHwPCs && masterHwPCs.length > 0) ? masterHwPCs : (allScannedPCs || []);
+        const names = pool
+          .filter(p => (p.Status && p.Status.includes('Offline')) || !p.CPU || p.CPU === '-' || !p.RAM_GB)
+          .map(p => p.PCName)
+          .filter(Boolean);
+        const uniqueNames = [...new Set(names)];
+        if (uniqueNames.length === 0) {
+          showToast('No Offline or Pending PCs found in current dataset', 'info');
+          return;
+        }
+        if (txtQuickTargets) {
+          txtQuickTargets.value = uniqueNames.join(', ');
+          updateQuickTargetsPreview();
+          showToast(`Filled ${uniqueNames.length} Offline/Pending targets`, 'success');
+        }
+      });
+    }
+
+    if (btnQuickSavePreset && quickSaveRow && txtQuickPresetName) {
+      btnQuickSavePreset.addEventListener('click', () => {
+        const { targets } = parseQuickTargets(txtQuickTargets ? txtQuickTargets.value : '');
+        if (targets.length === 0) {
+          showToast('Enter at least one valid target before saving a preset', 'warning');
+          return;
+        }
+        quickSaveRow.style.display = 'flex';
+        txtQuickPresetName.value = '';
+        txtQuickPresetName.focus();
+      });
+    }
+
+    if (btnQuickSaveCancel && quickSaveRow) {
+      btnQuickSaveCancel.addEventListener('click', () => {
+        quickSaveRow.style.display = 'none';
+      });
+    }
+
+    if (btnQuickSaveConfirm && quickSaveRow && txtQuickPresetName) {
+      const commitPreset = () => {
+        const name = txtQuickPresetName.value.trim();
+        const raw = txtQuickTargets ? txtQuickTargets.value.trim() : '';
+        if (!name || !raw) {
+          showToast('Please enter a preset name', 'warning');
+          return;
+        }
+        const presets = loadQuickStorage('fti_quick_presets').filter(p => p.name.toLowerCase() !== name.toLowerCase());
+        presets.unshift({ name, raw });
+        if (presets.length > 12) presets.pop();
+        saveQuickStorage('fti_quick_presets', presets);
+        quickSaveRow.style.display = 'none';
+        renderQuickTargetChips();
+        showToast(`Saved preset "${name}"`, 'success');
+      };
+      btnQuickSaveConfirm.addEventListener('click', commitPreset);
+      txtQuickPresetName.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); commitPreset(); }
+        if (e.key === 'Escape') { quickSaveRow.style.display = 'none'; }
+      });
+    }
+
+    renderQuickTargetChips();
+    updateQuickTargetsPreview();
 
     chkSw.addEventListener('change', () => {
 
@@ -6887,6 +7570,28 @@
     btnToggleSidebar.addEventListener('click', () => setLeftSidebar(true));
 
     btnToggleSidebarRight.addEventListener('click', () => setRightSidebar(true));
+
+    // Auto-collapse sidebars on narrow viewports (<= 1024px) to protect workspace width
+    let lastViewportNarrow = window.innerWidth <= 1024;
+    if (lastViewportNarrow) {
+      setLeftSidebar(true);
+      setRightSidebar(true);
+    }
+    window.addEventListener('resize', () => {
+      const isNarrow = window.innerWidth <= 1024;
+      if (isNarrow && !lastViewportNarrow) {
+        setLeftSidebar(true);
+        setRightSidebar(true);
+      }
+      lastViewportNarrow = isNarrow;
+    });
+
+    // Global Escape key handler to close any active modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-backdrop.active').forEach(m => m.classList.remove('active'));
+      }
+    });
 
     // Maximize Table Mode
 
@@ -6966,7 +7671,11 @@
 
       t.className = `toast ${type}`;
 
-      t.innerHTML = `<span>${msg}</span>`;
+      const span = document.createElement('span');
+
+      span.textContent = msg == null ? '' : String(msg);
+
+      t.appendChild(span);
 
       document.getElementById('toastContainer').appendChild(t);
 
@@ -6986,7 +7695,23 @@
 
       div.className = 'log-line';
 
-      div.innerHTML = `<span class="log-ts">[${ts}]</span> <span class="${colorClass}">${msg}</span>`;
+      const tsSpan = document.createElement('span');
+
+      tsSpan.className = 'log-ts';
+
+      tsSpan.textContent = `[${ts}]`;
+
+      const msgSpan = document.createElement('span');
+
+      if (colorClass) msgSpan.className = colorClass;
+
+      msgSpan.textContent = msg == null ? '' : String(msg);
+
+      div.appendChild(tsSpan);
+
+      div.appendChild(document.createTextNode(' '));
+
+      div.appendChild(msgSpan);
 
       container.appendChild(div);
 
@@ -7437,6 +8162,11 @@
 
       const q = searchQuery.toLowerCase();
       let filtered = sourceList.filter(pc => {
+        const matchesFilter = (currentFilter === 'all') ||
+          (currentFilter === 'OK' && pc.Status === 'OK') ||
+          (currentFilter === 'Offline' && pc.Status && pc.Status.includes('Offline')) ||
+          (currentFilter === 'Error' && pc.Status && pc.Status.includes('Error'));
+        if (!matchesFilter) return false;
         if (!q) return true;
         return (pc.PCName && pc.PCName.toLowerCase().includes(q)) ||
                (pc.Method && pc.Method.toLowerCase().includes(q)) ||
@@ -7463,6 +8193,9 @@
         if (pc.Status && pc.Status.includes('Offline')) {
           badgeClass = 'offline';
           stDisplay = 'Offline';
+        } else if (pc.Status === 'Scanning') {
+          badgeClass = 'scanning';
+          stDisplay = 'Scanning';
         } else if (pc.Status && (pc.Status.startsWith('Error') || pc.Status.includes('Error'))) {
           badgeClass = 'error';
           stDisplay = 'Error ⓘ';
@@ -7477,14 +8210,14 @@
         const countBadge = `<span class="nav-badge" style="background:rgba(2,132,199,0.15); color:var(--accent-primary); font-weight:700;">${pc.SoftwareCount || 0} Apps</span>`;
 
         return `
-          <tr class="sw-row-clickable" onclick="openPcSoftwareModal('${escapeHtml(pc.PCName)}')">
+          <tr class="sw-row-clickable" data-pc-name="${escapeHtml(pc.PCName || '')}">
             <td>${statusBadge}</td>
             <td style="font-size:0.72rem; color:var(--text-secondary);">${pc.Method && pc.Method.includes('⚡') ? `<span class="method-badge method-deep">${escapeHtml(pc.Method)}</span>` : escapeHtml(pc.Method || '-')}</td>
             <td><span class="pc-name-bold">${escapeHtml(pc.PCName || '-')}</span></td>
             <td style="text-align:center;">${countBadge}</td>
             <td style="font-size:0.75rem; color:var(--text-secondary); max-width:400px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(pc.KeySoftware || '-')}">${escapeHtml(pc.KeySoftware || '-')}</td>
             <td style="text-align:center;">
-              <button class="btn-view-sw" onclick="event.stopPropagation(); openPcSoftwareModal('${escapeHtml(pc.PCName)}')">
+              <button class="btn-view-sw" data-pc-name="${escapeHtml(pc.PCName || '')}">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 <span>View</span>
               </button>
@@ -7564,11 +8297,9 @@
     // Filter and search listeners
 
     txtSearchTable.addEventListener('input', (e) => {
-
       searchQuery = e.target.value;
-
-      renderTable();
-
+      if (activeGridTab === 'software') renderSwTable();
+      else renderTable();
     });
 
     window.setTableFilter = function(filterVal) {
@@ -7579,7 +8310,8 @@
       document.querySelectorAll('.strip-kpi-btn').forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-filter') === filterVal);
       });
-      renderTable();
+      if (activeGridTab === 'software') renderSwTable();
+      else renderTable();
     };
 
     document.querySelectorAll('.filter-btn-pill').forEach(btn => {
@@ -7714,7 +8446,7 @@
 
         if (data.error && (!data.items || data.items.length === 0)) {
 
-          fsItemsList.innerHTML = `<div style="padding:28px 16px; text-align:center; color:var(--accent-rose); font-size:0.8rem;">⚠️ ${data.error}</div>`;
+          fsItemsList.innerHTML = `<div style="padding:28px 16px; text-align:center; color:var(--accent-rose); font-size:0.8rem;">⚠️ ${escapeHtml(data.error)}</div>`;
 
           return;
 
@@ -7742,7 +8474,21 @@
 
           leftCol.style = 'display:flex; align-items:center; gap:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
 
-          leftCol.innerHTML = `<span style="font-size:15px; flex-shrink:0;">${isDir ? '📁' : '📄'}</span><span style="font-weight:${isDir ? '700' : '500'}; color:var(--text-main);">${item.name}</span>`;
+          const iconSpan = document.createElement('span');
+
+          iconSpan.style.cssText = 'font-size:15px; flex-shrink:0;';
+
+          iconSpan.textContent = isDir ? '📁' : '📄';
+
+          const nameSpan = document.createElement('span');
+
+          nameSpan.style.cssText = `font-weight:${isDir ? '700' : '500'}; color:var(--text-main);`;
+
+          nameSpan.textContent = item.name || '';
+
+          leftCol.appendChild(iconSpan);
+
+          leftCol.appendChild(nameSpan);
 
           const rightCol = document.createElement('div');
 
@@ -7796,7 +8542,7 @@
 
       } catch (err) {
 
-        fsItemsList.innerHTML = `<div style="padding:28px 16px; text-align:center; color:var(--accent-rose); font-size:0.8rem;">❌ Error: ${err.message}</div>`;
+        fsItemsList.innerHTML = `<div style="padding:28px 16px; text-align:center; color:var(--accent-rose); font-size:0.8rem;">❌ Error: ${escapeHtml(err.message)}</div>`;
 
       }
 
@@ -7964,6 +8710,17 @@
 
       }
 
+      let quickResolved = [];
+      if (!isRetryOffline && rbQuick && rbQuick.checked) {
+        const parsed = parseQuickTargets(txtQuickTargets ? txtQuickTargets.value : '');
+        if (parsed.targets.length === 0) {
+          showToast('Please enter at least one valid Hostname, IP, Range, or CIDR in Quick Targets', 'warning');
+          return;
+        }
+        quickResolved = parsed.targets;
+        saveQuickRecent(txtQuickTargets.value);
+      }
+
       isScanning = true;
 
       scanFinishedHandled = false;
@@ -7980,8 +8737,17 @@
       if (!isRetryOffline) {
 
         allScannedPCs = [];
+        allScannedSwPCs = [];
+        window._lastDashSig = '';
+
+        const lblLatestBadge = document.getElementById('lblSourceLatestCount');
+        if (lblLatestBadge) lblLatestBadge.innerText = '0';
+        const lblSwTabCount = document.getElementById('lblSwTabCount');
+        if (lblSwTabCount) lblSwTabCount.innerText = '0';
 
         renderTable();
+        if (activeGridTab === 'software') renderSwTable();
+        else if (activeGridTab === 'dashboard') renderDashboard();
 
       }
 
@@ -7989,11 +8755,13 @@
 
       const payload = {
 
-        source: rbLocal.checked ? 'localhost' : (rbAD.checked ? 'ad' : 'file'),
+        source: rbLocal.checked ? 'localhost' : (rbAD.checked ? 'ad' : (rbQuick && rbQuick.checked ? 'quick' : 'file')),
 
         daysActive: parseInt(document.getElementById('numDays').value) || 0,
 
         listFile: txtListFile.value.trim(),
+
+        quickTargets: quickResolved,
 
         excludeServerFile: txtExcludeServerFile.value.trim(),
 
@@ -8155,11 +8923,10 @@
         // Admin badge sync
 
         if (data.isAdmin !== undefined && adminPill) {
-
-          adminPill.innerHTML = data.isAdmin ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> <span>Administrator</span>' : '<span>Standard User</span>';
-
-          adminPill.style.color = data.isAdmin ? 'var(--accent-emerald)' : 'var(--text-muted)';
-
+          adminPill.classList.toggle('is-standard', !data.isAdmin);
+          adminPill.innerHTML = data.isAdmin
+            ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg><span>Administrator</span>'
+            : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Standard User</span>';
         }
 
         // Live Auto-Scan Countdown in Top Header (Sync with Backend)
@@ -8190,6 +8957,10 @@
         // Scanning State Sync
 
         if (serverIsScanning) {
+
+          if (!isScanning && activeDataSource !== 'latest') {
+            setDataSource('latest');
+          }
 
           isScanning = true;
 
@@ -8307,22 +9078,8 @@
           if (statusIndicatorDot) statusIndicatorDot.className = 'status-indicator-dot';
         }
 
-        // Semantic KPI counters helper
-        function updateKpiVal(el, val, type) {
-          if (!el) return;
-          const num = parseInt(val) || 0;
-          el.innerText = num;
-          el.classList.toggle('has-val', num > 0);
-          if (type === 'ok') el.classList.toggle('has-ok', num > 0);
-          if (type === 'offline') el.classList.toggle('has-offline', num > 0);
-          if (type === 'error') el.classList.toggle('has-error', num > 0);
-        }
-
-        // Update KPI Counters
-        updateKpiVal(statTotal, data.total, 'total');
-        updateKpiVal(statOk, data.ok, 'ok');
-        updateKpiVal(statOffline, data.offline, 'offline');
-        updateKpiVal(statError, data.error, 'error');
+        // Update KPI Counters (respects activeDataSource when idle)
+        syncTopStripKpis(data);
 
         // Overall Telemetry Fill & Time
         const pct = Math.min(100, Math.max(0, data.percent || 0));
@@ -8394,26 +9151,33 @@
 
         }
 
-        // Real-Time Table Records
-
-        // Real-Time Table Records (Hardware Scan)
-        if (data.scannedPCs && data.scannedPCs.length > 0) {
+        // Real-Time Table & Dashboard Records (Hardware Scan)
+        if (Array.isArray(data.scannedPCs)) {
           allScannedPCs = data.scannedPCs;
-          const lblHwTabCount = document.getElementById('lblHwTabCount');
-          if (lblHwTabCount) lblHwTabCount.innerText = allScannedPCs.length;
-          if (activeGridTab === 'hardware') {
-            renderTable();
-          } else if (activeGridTab === 'dashboard') {
-            if (!isScanning) renderDashboard();
+          const lblLatestBadge = document.getElementById('lblSourceLatestCount');
+          if (lblLatestBadge) lblLatestBadge.innerText = allScannedPCs.length;
+
+          if (allScannedPCs.length > 0) {
+            const lblHwTabCount = document.getElementById('lblHwTabCount');
+            if (lblHwTabCount && activeDataSource === 'latest') lblHwTabCount.innerText = allScannedPCs.length;
+            if (activeGridTab === 'hardware' && activeDataSource === 'latest') {
+              renderTable();
+            } else if (activeGridTab === 'dashboard' && activeDataSource === 'latest') {
+              const dashSig = `${allScannedPCs.length}|${data.ok || 0}|${data.offline || 0}|${data.error || 0}|${serverIsScanning ? 1 : 0}`;
+              if (dashSig !== window._lastDashSig) {
+                window._lastDashSig = dashSig;
+                renderDashboard();
+              }
+            }
           }
         }
 
         // Real-Time Table Records (Software Scan)
-        if (data.swScannedPCs && data.swScannedPCs.length > 0) {
+        if (Array.isArray(data.swScannedPCs) && data.swScannedPCs.length > 0) {
           allScannedSwPCs = data.swScannedPCs;
           const lblSwTabCount = document.getElementById('lblSwTabCount');
-          if (lblSwTabCount) lblSwTabCount.innerText = allScannedSwPCs.length;
-          if (activeGridTab === 'software') {
+          if (lblSwTabCount && activeDataSource === 'latest') lblSwTabCount.innerText = allScannedSwPCs.length;
+          if (activeGridTab === 'software' && activeDataSource === 'latest') {
             renderSwTable();
           }
         }
@@ -8467,13 +9231,13 @@
     
     
     // Demo 100 PCs Simulation Handler
-    const btnRunDemo = document.getElementById('btnRunDemo');
     if (btnRunDemo) {
       btnRunDemo.addEventListener('click', async () => {
         if (isScanning) {
           showToast('A scan is currently already running.', 'warning');
           return;
         }
+        setDataSource('latest');
         isScanning = true;
         scanFinishedHandled = false;
         btnRunDemo.disabled = true;
@@ -8552,6 +9316,8 @@
 
     document.getElementById('masterBtnDone').addEventListener('click', () => masterModalBackdrop.classList.remove('active'));
 
+    masterModalBackdrop.addEventListener('click', (e) => { if (e.target === masterModalBackdrop) masterModalBackdrop.classList.remove('active'); });
+
     async function fetchMasterStatus() {
 
       const outDir = txtOutDir ? txtOutDir.value.trim() : 'C:\\Inventory';
@@ -8573,8 +9339,8 @@
         const lblLatestBadge = document.getElementById('lblSourceLatestCount');
         if (lblLatestBadge) lblLatestBadge.innerText = allScannedPCs.length;
 
-        // Auto-select Master Database if records exist and latest scan has not run yet
-        if (activeDataSource === 'latest' && allScannedPCs.length === 0 && masterHwPCs.length > 0) {
+        // Auto-select Master Database if records exist and latest scan has not run yet (only when not scanning)
+        if (!isScanning && activeDataSource === 'latest' && allScannedPCs.length === 0 && masterHwPCs.length > 0) {
           activeDataSource = 'master';
           const bLatest = document.getElementById('btnSourceLatest');
           const bMaster = document.getElementById('btnSourceMaster');
@@ -8583,6 +9349,7 @@
         }
 
         if (activeDataSource === 'master') {
+          syncTopStripKpis();
           if (activeGridTab === 'hardware') renderTable();
           else if (activeGridTab === 'software') renderSwTable();
           else if (activeGridTab === 'dashboard') renderDashboard();
@@ -8703,6 +9470,8 @@
     document.getElementById('schedBtnClose').addEventListener('click', () => schedModalBackdrop.classList.remove('active'));
 
     document.getElementById('schedBtnCancel').addEventListener('click', () => schedModalBackdrop.classList.remove('active'));
+
+    schedModalBackdrop.addEventListener('click', (e) => { if (e.target === schedModalBackdrop) schedModalBackdrop.classList.remove('active'); });
 
     const selWinTaskMode = document.getElementById('selWinTaskMode');
 
@@ -8937,10 +9706,8 @@
       window.__isClosing = true;
       if (pollTimer) clearInterval(pollTimer);
       try {
-        navigator.sendBeacon('/api/exit', '');
-      } catch (e) {
-        try { fetch('/api/exit', { method: 'POST', keepalive: true }); } catch (err) {}
-      }
+        fetch('/api/exit', { method: 'POST', keepalive: true }).catch(() => {});
+      } catch (err) {}
     }
 
     // Confirmation prompt if user attempts to close window while a scan is actively running
